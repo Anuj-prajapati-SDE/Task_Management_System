@@ -1,0 +1,137 @@
+/* --- Core Layout Fixes --- */
+.layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Prevents flex overflow */
+}
+
+/* --- Topbar Alignment Fix (Desktop) --- */
+.topbar-actions {
+  display: flex;
+  align-items: center; /* Centers icons and avatar vertically */
+  gap: 12px;
+  margin-left: auto;
+}
+
+.topbar-user-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.topbar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.mini-initials {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #4f46e5;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.topbar-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Mobile Visibility Control --- */
+.mobile-only-btn {
+  display: none; /* Hidden on desktop */
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* --- Responsive Breakpoints --- */
+
+/* Tablet & Smaller Desktop (Adjusting search width) */
+@media (max-width: 1024px) {
+  .topbar-search input {
+    width: 180px;
+  }
+}
+
+/* Mobile (Under 768px) */
+@media (max-width: 768px) {
+  /* Toggle visibility */
+  .hamburger-menu {
+    display: flex;
+  }
+  
+  .close-sidebar {
+    display: flex;
+    margin-left: auto;
+  }
+
+  /* Fixed Mobile Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1001;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Mobile Overlay */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+  }
+
+  /* Responsive Topbar Items */
+  .topbar-search {
+    flex: 1;
+  }
+  
+  .topbar-search input {
+    width: 100%;
+  }
+
+  .topbar-actions {
+    gap: 8px;
+  }
+}
+
+/* Extra Small Phones (Under 480px) */
+@media (max-width: 480px) {
+  .topbar-search {
+    display: none; /* Hide search to save space for icons */
+  }
+
+  .brand-name {
+    font-size: 1rem;
+  }
+}

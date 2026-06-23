@@ -62,7 +62,7 @@ export const AdminDashboard = () => {
       <div className="page-header">
         <div>
           <h1>Admin Dashboard</h1>
-          <p>Monitor your team's performance and tasks.</p>
+          <p>Monitor your own assigned tasks and performance.</p>
         </div>
         <div className="header-actions">
           <button
@@ -98,14 +98,14 @@ export const AdminDashboard = () => {
           },
           {
             icon: <MdTask />,
-            label: "Total Tasks",
+            label: "My Total Tasks",
             value: stats.totalTasks || 0,
             color: "#3b82f6",
             bg: "rgba(59,130,246,0.1)",
           },
           {
             icon: <MdTask />,
-            label: "Completed",
+            label: "My Completed Tasks",
             value: stats.completedTasks || 0,
             color: "#10b981",
             bg: "rgba(16,185,129,0.1)",
@@ -119,7 +119,7 @@ export const AdminDashboard = () => {
           },
           {
             icon: <MdWarning />,
-            label: "Overdue",
+            label: "My Overdue Tasks",
             value: stats.overdueTasks || 0,
             color: "#ef4444",
             bg: "rgba(239,68,68,0.1)",

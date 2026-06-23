@@ -11,7 +11,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      socketRef.current = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000', { transports: ['websocket'] });
+      socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', { transports: ['websocket'] });
       socketRef.current.emit('join_room', user._id);
 
       socketRef.current.on('new_notification', (notification) => {

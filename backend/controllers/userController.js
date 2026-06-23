@@ -6,7 +6,13 @@ exports.getAllUsers = async (req, res) => {
     const { page = 1, limit = 20, search, role, isActive } = req.query;
     const query = {};
     if (search) query.$or = [{ name: new RegExp(search, 'i') }, { email: new RegExp(search, 'i') }];
-    if (role) query.role = role;
+    if (req.user.role === 'admin') {
+      query.role = 'user';
+    } else {
+      if (role) query.role = role;
+      if (!query.role) query.role = { $ne: 'superadmin' };
+      else if (query.role === 'superadmin') query.role = { $ne: 'superadmin' };
+    }
     if (isActive !== undefined) query.isActive = isActive === 'true';
 
     const total = await User.countDocuments(query);
@@ -99,7 +105,7 @@ exports.updateProfile = async (req, res) => {
 exports.getUserActivity = async (req, res) => {
   try {
     const tasks = await Task.find({ assignee: req.params.id })
-      .populate('assignedBy', 'name avatar')
+      .populate('assignedBy', 'name avatar role')
       .select('title status priority createdAt updatedAt')
       .sort({ updatedAt: -1 })
       .limit(50);

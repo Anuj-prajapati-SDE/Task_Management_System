@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
-import { MdAdd, MdSearch, MdFilterList, MdEdit, MdDelete, MdViewKanban } from 'react-icons/md';
+import { MdAdd, MdSearch, MdFilterList, MdEdit, MdDelete, MdVisibility, MdViewKanban } from 'react-icons/md';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -22,16 +22,25 @@ const TaskListPage = () => {
       const { data } = await API.get('/tasks', { params });
       setTasks(data.data);
       setPagination(data.pagination);
-    } catch {}
+    } catch { }
     finally { setLoading(false); }
   }, [filters]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (task) => {
+    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
+      toast.error('Admins cannot delete tasks assigned by a superadmin');
+      return;
+    }
     if (!window.confirm('Delete this task?')) return;
-    try { await API.delete(`/tasks/${id}`); toast.success('Task deleted'); fetchTasks(); }
-    catch { toast.error('Failed to delete'); }
+    try {
+      await API.delete(`/tasks/${task._id}`);
+      toast.success('Task deleted');
+      fetchTasks();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete');
+    }
   };
 
   const statusOptions = ['', 'pending', 'in_progress', 'review', 'completed', 'cancelled'];
@@ -40,11 +49,20 @@ const TaskListPage = () => {
   return (
     <div>
       <div className="page-header">
-        <div><h1>Tasks</h1><p>Manage and track all your tasks.</p></div>
+        <div>
+          <h1>Tasks</h1>
+          <p>
+            {user?.role === 'admin'
+              ? 'Manage and track tasks you assigned.'
+              : user?.role === 'superadmin'
+              ? 'Manage and track all tasks in the system.'
+              : 'Manage and track all your tasks.'}
+          </p>
+        </div>
         <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => navigate('/tasks/kanban')}><MdViewKanban /> Kanban</button>
-          {user.role !=='user'?(<button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> New Task</button>):('')}
-          
+          {/* <button className="btn btn-secondary" onClick={() => navigate('/tasks/kanban')}><MdViewKanban /> Kanban</button> */}
+          {user.role !== 'user' ? (<button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> New Task</button>) : ('')}
+
         </div>
       </div>
 
@@ -88,7 +106,16 @@ const TaskListPage = () => {
           <div className="table-wrapper">
             <table className="table">
               <thead>
-                <tr><th>Title</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due Date</th><th>Actions</th></tr>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Assigned To</th>
+                  <th>Assigned By</th>
+                  <th>Start Date</th>
+                  <th>Due Date</th>
+                  <th>Actions</th>
+                </tr>
               </thead>
               <tbody>
                 {tasks.map(task => (
@@ -110,17 +137,33 @@ const TaskListPage = () => {
                       ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Unassigned</span>}
                     </td>
                     <td>
+                      {task.assignedBy ? (
+                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                          <div className="avatar avatar-sm" style={{ background: '#06b6d4' }}>{task.assignedBy.name?.[0]}</div>
+                          <span style={{ fontSize: 12 }}>{task.assignedBy.name}</span>
+                        </div>
+                      ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                    </td>
+                    <td>
+                      {task.startDate ? (
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {format(new Date(task.startDate), 'MMM d, yyyy h:mm a')}
+                        </span>
+                      ) : <span style={{ color: 'var(--text-light)', fontSize: 12 }}>—</span>}
+                    </td>
+                    <td>
                       {task.dueDate ? (
                         <span style={{ fontSize: 12, color: new Date(task.dueDate) < new Date() && task.status !== 'completed' ? 'var(--danger)' : 'var(--text-muted)' }}>
-                          {format(new Date(task.dueDate), 'MMM d, yyyy')}
+                          {format(new Date(task.dueDate), 'MMM d, yyyy h:mm a')}
                         </span>
                       ) : <span style={{ color: 'var(--text-light)', fontSize: 12 }}>—</span>}
                     </td>
                     <td>
                       <div className="flex gap-2">
+                        <button className="btn-icon btn btn-ghost btn-sm" onClick={() => navigate(`/tasks/${task._id}`)} title="View"><MdVisibility /></button>
                         <button className="btn-icon btn btn-ghost btn-sm" onClick={() => navigate(`/tasks/${task._id}/edit`)} title="Edit"><MdEdit /></button>
-                        {(user.role === 'admin' || user.role === 'superadmin') &&
-                          <button className="btn-icon btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(task._id)} title="Delete"><MdDelete /></button>}
+                        {(user.role === 'superadmin' || (user.role === 'admin' && task.assignedBy?.role !== 'superadmin')) &&
+                          <button className="btn-icon btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(task)} title="Delete"><MdDelete /></button>}
                       </div>
                     </td>
                   </tr>

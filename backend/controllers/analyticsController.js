@@ -43,27 +43,36 @@ exports.getUserDashboard = async (req, res) => {
 exports.getAdminDashboard = async (req, res) => {
   try {
     const now = new Date();
+    const taskQuery = req.user.role === 'admin' ? { assignedBy: req.user._id } : {};
+
     const [totalUsers, activeUsers, totalTasks, completedTasks, totalTeams, overdueTasks] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ isActive: true }),
-      Task.countDocuments(),
-      Task.countDocuments({ status: 'completed' }),
+      Task.countDocuments(taskQuery),
+      Task.countDocuments({ ...taskQuery, status: 'completed' }),
       Team.countDocuments(),
-      Task.countDocuments({ dueDate: { $lt: now }, status: { $nin: ['completed', 'cancelled'] } }),
+      Task.countDocuments({ ...taskQuery, dueDate: { $lt: now }, status: { $nin: ['completed', 'cancelled'] } }),
     ]);
 
     // Task status distribution
+    const matchStage = req.user.role === 'admin' ? { $match: { assignedBy: req.user._id } } : { $match: {} };
     const tasksByStatus = await Task.aggregate([
+      matchStage,
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
     const tasksByPriority = await Task.aggregate([
+      matchStage,
       { $group: { _id: '$priority', count: { $sum: 1 } } },
     ]);
 
     // Top performers (most tasks completed in last 30 days)
     const thirtyDaysAgo = new Date(now - 30 * 24 * 3600000);
+    const performerMatch = req.user.role === 'admin'
+      ? { status: 'completed', completedAt: { $gte: thirtyDaysAgo }, assignedBy: req.user._id }
+      : { status: 'completed', completedAt: { $gte: thirtyDaysAgo } };
+
     const topPerformers = await Task.aggregate([
-      { $match: { status: 'completed', completedAt: { $gte: thirtyDaysAgo } } },
+      { $match: performerMatch },
       { $group: { _id: '$assignee', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 5 },
@@ -79,8 +88,8 @@ exports.getAdminDashboard = async (req, res) => {
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
       const [created, done] = await Promise.all([
-        Task.countDocuments({ createdAt: { $gte: start, $lte: end } }),
-        Task.countDocuments({ status: 'completed', completedAt: { $gte: start, $lte: end } }),
+        Task.countDocuments({ ...taskQuery, createdAt: { $gte: start, $lte: end } }),
+        Task.countDocuments({ ...taskQuery, status: 'completed', completedAt: { $gte: start, $lte: end } }),
       ]);
       monthlyTrend.push({ month: start.toLocaleString('default', { month: 'short' }), created, completed: done });
     }

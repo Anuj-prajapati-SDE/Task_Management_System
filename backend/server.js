@@ -94,6 +94,12 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ success: false, message: 'File is too large. Max size is 10MB per file.' });
+  }
+  if (err.message === 'File type not allowed') {
+    return res.status(400).json({ success: false, message: 'File type not allowed.' });
+  }
   res.status(err.status || 500).json({ success: false, message: err.message || 'Server Error' });
 });
 

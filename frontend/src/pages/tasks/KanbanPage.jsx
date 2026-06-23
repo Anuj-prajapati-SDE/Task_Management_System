@@ -155,6 +155,10 @@ const KanbanPage = () => {
     } else {
       // Move to different column
       const task = columns[sourceCol].find(t => t._id === active.id);
+      if (user.role === 'admin' && task?.assignedBy?.role === 'superadmin') {
+        toast.error('Admins cannot update status on tasks assigned by a superadmin');
+        return;
+      }
       setColumns(prev => ({
         ...prev,
         [sourceCol]: prev[sourceCol].filter(t => t._id !== active.id),

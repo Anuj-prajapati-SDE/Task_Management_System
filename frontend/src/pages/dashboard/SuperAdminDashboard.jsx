@@ -575,8 +575,8 @@ const SuperAdminDashboard = () => {
                   { label: 'Database', value: 'Connected', ok: true },
                   { label: 'Socket.IO', value: 'Running', ok: true },
                   { label: 'File Storage', value: 'Available', ok: true },
-                  { label: 'Email Service', value: process.env.SMTP_USER ? 'Configured' : 'Not configured', ok: !!process.env.SMTP_USER },
-                  { label: 'Environment', value: process.env.NODE_ENV || 'development', ok: true },
+                  { label: 'Email Service', value: import.meta.env.VITE_SMTP_USER ? 'Configured' : 'Not configured', ok: !!import.meta.env.VITE_SMTP_USER },
+                  { label: 'Environment', value: import.meta.env.MODE || 'development', ok: true },
                 ].map(item => (
                   <div key={item.label} className="flex-between" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{item.label}</span>

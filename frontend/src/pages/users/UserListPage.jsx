@@ -85,13 +85,19 @@ export const UserListPage = () => {
     }
   };
 
+  const displayedUsers = users.filter((u) => {
+    if (u.role === "superadmin") return false;
+    if (currentUser.role === "admin" && u.role !== "user") return false;
+    return true;
+  });
+
   const toggleSelect = (id) =>
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   const selectAll = () =>
     setSelected(
-      selected.length === users.length ? [] : users.map((u) => u._id),
+      selected.length === displayedUsers.length ? [] : displayedUsers.map((u) => u._id),
     );
 
   return (
@@ -162,17 +168,18 @@ export const UserListPage = () => {
               }
             />
           </div>
-          <select
-            className="form-control"
-            style={{ width: 130, fontSize: "13px", padding: "6px 10px" }}
-            value={filters.role}
-            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-          >
-            <option value="">All Roles</option>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-            <option value="superadmin">Super Admin</option>
-          </select>
+          {currentUser.role === "superadmin" && (
+            <select
+              className="form-control"
+              style={{ width: 130, fontSize: "13px", padding: "6px 10px" }}
+              value={filters.role}
+              onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+            >
+              <option value="">All Roles</option>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          )}
           <select
             className="form-control"
             style={{ width: 130, fontSize: "13px", padding: "6px 10px" }}
@@ -207,7 +214,7 @@ export const UserListPage = () => {
                       type="checkbox"
                       onChange={selectAll}
                       checked={
-                        selected.length === users.length && users.length > 0
+                        selected.length === displayedUsers.length && displayedUsers.length > 0
                       }
                     />
                   </th>
@@ -220,22 +227,7 @@ export const UserListPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {users
-                  .filter((u) => {
-                    // Agar login user admin ya user hai,
-                    // to superadmin users ko hide karo
-                    if (
-                      (currentUser.role === "admin" ||
-                        currentUser.role === "user") &&
-                      u.role === "superadmin"
-                    ) {
-                      return false;
-                    }
-
-                    // Baaki sab users ko show karo
-                    return true;
-                  })
-                  .map((u) => (
+                {displayedUsers.map((u) => (
                     <tr key={u._id}>
                       <td>
                         <input

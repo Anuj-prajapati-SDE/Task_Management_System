@@ -28,7 +28,7 @@ const seed = async () => {
     console.log('Cleared existing data');
 
     // Create users
-    const password = await bcrypt.hash('password123', 12);
+    const password = 'password123';
 
     const superAdmin = await User.create({
       name: 'Super Admin',
@@ -52,14 +52,19 @@ const seed = async () => {
       position: 'Engineering Manager',
     });
 
-    const users = await User.insertMany([
+    const usersData = [
       { name: 'Alice Johnson', email: 'alice@demo.com', password, role: 'user', isActive: true, isEmailVerified: true, department: 'Engineering', position: 'Senior Developer' },
       { name: 'Bob Smith', email: 'bob@demo.com', password, role: 'user', isActive: true, isEmailVerified: true, department: 'Design', position: 'UI/UX Designer' },
       { name: 'Carol Davis', email: 'carol@demo.com', password, role: 'user', isActive: true, isEmailVerified: true, department: 'Marketing', position: 'Marketing Lead' },
       { name: 'David Lee', email: 'david@demo.com', password, role: 'user', isActive: true, isEmailVerified: true, department: 'Engineering', position: 'Backend Developer' },
       { name: 'Eve Wilson', email: 'eve@demo.com', password, role: 'user', isActive: true, isEmailVerified: true, department: 'QA', position: 'QA Engineer' },
       { name: 'user@demo.com User', email: 'user@demo.com', password, role: 'user', isActive: true, isEmailVerified: true, department: 'Engineering', position: 'Developer' },
-    ]);
+    ];
+
+    const users = [];
+    for (const u of usersData) {
+      users.push(await User.create(u));
+    }
 
     const [alice, bob, carol, david, eve, demoUser] = users;
     console.log('Created users');

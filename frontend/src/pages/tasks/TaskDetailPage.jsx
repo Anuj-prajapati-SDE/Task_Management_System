@@ -38,12 +38,18 @@ const TaskDetailPage = () => {
   useEffect(() => { fetchTask(); }, [id]);
 
   const handleStatusChange = async (status) => {
+    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
+      toast.error('Admins cannot update status on tasks assigned by a superadmin');
+      return;
+    }
     setStatusUpdating(true);
     try {
       await API.put(`/tasks/${id}`, { status });
       setTask(prev => ({ ...prev, status }));
       toast.success('Status updated');
-    } catch { toast.error('Failed to update status'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update status');
+    }
     finally { setStatusUpdating(false); }
   };
 
@@ -68,6 +74,10 @@ const TaskDetailPage = () => {
   };
 
   const handleAddSubtask = async () => {
+    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
+      toast.error('Admins cannot modify subtasks on tasks assigned by a superadmin');
+      return;
+    }
     if (!newSubtask.trim()) return;
     setAddingSubtask(true);
     try {
@@ -79,6 +89,10 @@ const TaskDetailPage = () => {
   };
 
   const handleToggleSubtask = async (subtask) => {
+    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
+      toast.error('Admins cannot modify subtasks on tasks assigned by a superadmin');
+      return;
+    }
     try {
       const { data } = await API.put(`/tasks/${id}/subtasks/${subtask._id}`, {
         title: subtask.title, isCompleted: !subtask.isCompleted
@@ -88,6 +102,10 @@ const TaskDetailPage = () => {
   };
 
   const handleDeleteSubtask = async (subtaskId) => {
+    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
+      toast.error('Admins cannot modify subtasks on tasks assigned by a superadmin');
+      return;
+    }
     try {
       await API.delete(`/tasks/${id}/subtasks/${subtaskId}`);
       setTask(prev => ({ ...prev, subtasks: prev.subtasks.filter(s => s._id !== subtaskId) }));
@@ -123,6 +141,8 @@ const TaskDetailPage = () => {
 
   if (!task) return null;
 
+  const isReadOnlyExceptAssignee = user.role === 'admin' && task.assignedBy?.role === 'superadmin';
+
   const completedSubtasks = task.subtasks?.filter(s => s.isCompleted).length || 0;
   const totalSubtasks = task.subtasks?.length || 0;
   const subtaskProgress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
@@ -149,7 +169,9 @@ const TaskDetailPage = () => {
           <button className={`btn ${tracking ? 'btn-danger' : 'btn-secondary'}`} onClick={handleTimeTracking}>
             {tracking ? <><MdStop /> Stop Timer</> : <><MdPlayArrow /> Start Timer</>}
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate(`/tasks/${id}/edit`)}><MdEdit /> Edit</button>
+          <button className="btn btn-secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
+            <MdEdit /> {isReadOnlyExceptAssignee ? 'Reassign Task' : 'Edit'}
+          </button>
         </div>
       </div>
 
@@ -170,7 +192,7 @@ const TaskDetailPage = () => {
             <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
               {['pending', 'in_progress', 'review', 'completed', 'cancelled'].map(s => (
                 <button key={s} className={`btn btn-sm ${task.status === s ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => handleStatusChange(s)} disabled={statusUpdating}>
+                  onClick={() => handleStatusChange(s)} disabled={statusUpdating || isReadOnlyExceptAssignee}>
                   {s.replace('_', ' ')}
                 </button>
               ))}
@@ -194,24 +216,26 @@ const TaskDetailPage = () => {
               {task.subtasks?.map(subtask => (
                 <div key={subtask._id} className="flex-between" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                   <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                    <button onClick={() => handleToggleSubtask(subtask)} style={{ color: subtask.isCompleted ? 'var(--success)' : 'var(--text-muted)', fontSize: 20, lineHeight: 1 }}>
+                    <button onClick={() => !isReadOnlyExceptAssignee && handleToggleSubtask(subtask)} style={{ color: subtask.isCompleted ? 'var(--success)' : 'var(--text-muted)', fontSize: 20, lineHeight: 1, cursor: isReadOnlyExceptAssignee ? 'not-allowed' : 'pointer', background: 'none', border: 'none', padding: 0 }}>
                       {subtask.isCompleted ? <MdCheckBox /> : <MdCheckBoxOutlineBlank />}
                     </button>
                     <span style={{ fontSize: 13, textDecoration: subtask.isCompleted ? 'line-through' : 'none', color: subtask.isCompleted ? 'var(--text-muted)' : 'var(--text)' }}>
                       {subtask.title}
                     </span>
                   </div>
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteSubtask(subtask._id)}>
-                    <MdDelete />
-                  </button>
+                  {!isReadOnlyExceptAssignee && (
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteSubtask(subtask._id)}>
+                      <MdDelete />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
               <input className="form-control" placeholder="Add subtask..." value={newSubtask}
                 onChange={e => setNewSubtask(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddSubtask())} />
-              <button className="btn btn-secondary" onClick={handleAddSubtask} disabled={addingSubtask}><MdAdd /></button>
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), !isReadOnlyExceptAssignee && handleAddSubtask())} disabled={isReadOnlyExceptAssignee} />
+              <button className="btn btn-secondary" onClick={handleAddSubtask} disabled={addingSubtask || isReadOnlyExceptAssignee}><MdAdd /></button>
             </div>
           </div>
 
@@ -419,15 +443,6 @@ const TaskDetailPage = () => {
             </div>
           )}
 
-          {/* Recurring */}
-          {task.isRecurring && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="card-header"><span className="card-title">Recurring</span></div>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                Repeats every {task.recurringPattern?.interval} {task.recurringPattern?.frequency}
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>

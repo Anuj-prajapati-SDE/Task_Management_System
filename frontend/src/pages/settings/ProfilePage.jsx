@@ -120,7 +120,7 @@ export const AccountSettingsPage = () => {
             ].map(f => (
               <div key={f.label} className="flex-between" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{f.label}</span>
-                <span style={{ fontSize: 13, fontWeight: 500, fontFamily: f.label === 'Account ID' ? 'monospace' : 'inherit', fontSize: f.label === 'Account ID' ? 11 : 13 }}>{f.value}</span>
+                <span style={{ fontWeight: 500, fontFamily: f.label === 'Account ID' ? 'monospace' : 'inherit', fontSize: f.label === 'Account ID' ? 11 : 13 }}>{f.value}</span>
               </div>
             ))}
           </div>

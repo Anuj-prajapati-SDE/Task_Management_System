@@ -41,7 +41,7 @@ import TeamDetailPage from './pages/teams/TeamDetailPage';
 
 // Other Pages
 import NotificationsPage from './pages/NotificationsPage';
-import ProfilePage from './pages/settings/ProfilePage'; 
+import ProfilePage from './pages/settings/ProfilePage';
 import AccountSettingsPage from './pages/settings/AccountSettingsPage';
 import NotificationSettingsPage from './pages/settings/NotificationSettingsPage';
 import SecuritySettingsPage from './pages/settings/SecuritySettingsPage';
@@ -79,7 +79,7 @@ const RegisterRoute = ({ children }) => {
   if (loading || canRegister === null) return <div className="loading-screen"><div className="spinner" /></div>;
   if (user) return <Navigate to={user.isEmailVerified ? "/dashboard" : "/waiting-verification"} replace />;
   if (!canRegister) return <Navigate to="/login" replace />;
-  
+
   return children;
 };
 
@@ -110,8 +110,8 @@ function AppRoutes() {
         {/* Tasks */}
         <Route path="tasks" element={<TaskListPage />} />
         <Route path="tasks/create" element={<CreateTaskPage />} />
-        <Route path="tasks/kanban" element={<KanbanPage />} />
-        <Route path="tasks/calendar" element={<CalendarPage />} />
+        {/* <Route path="tasks/kanban" element={<KanbanPage />} /> */}
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="tasks/:id" element={<TaskDetailPage />} />
         <Route path="tasks/:id/edit" element={<EditTaskPage />} />
 
@@ -146,10 +146,11 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter 
-    future={{v7_relativeSplatPath: true,
-      v7_startTransition: true,
-    }}>
+    <BrowserRouter
+      future={{
+        v7_relativeSplatPath: true,
+        v7_startTransition: true,
+      }}>
       <AuthProvider>
         <SocketProvider>
           <Toaster position="top-right" toastOptions={{ duration: 3000 }} />

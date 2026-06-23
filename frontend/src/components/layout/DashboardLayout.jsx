@@ -27,7 +27,7 @@ const DashboardLayout = () => {
       try {
         const { data } = await API.get('/notifications?isRead=false&limit=1');
         setUnreadCount(data.unreadCount || 0);
-      } catch {}
+      } catch { }
     };
     fetchUnread();
 
@@ -37,12 +37,12 @@ const DashboardLayout = () => {
   }, []);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
-
+ 
   const navItems = [
     { icon: <MdDashboard />, label: 'Dashboard', to: '/dashboard', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdAssignment />, label: 'My Tasks', to: '/tasks', roles: ['user', 'admin', 'superadmin'] },
-    { icon: <MdViewKanban />, label: 'Kanban Board', to: '/tasks/kanban', roles: ['user', 'admin', 'superadmin'] },
-    { icon: <MdCalendarMonth />, label: 'Calendar', to: '/tasks/calendar', roles: ['user', 'admin', 'superadmin'] },
+    // { icon: <MdViewKanban />, label: 'Kanban Board', to: '/tasks/kanban', roles: ['user', 'admin', 'superadmin'] },
+    { icon: <MdCalendarMonth />, label: 'Calendar', to: '/calendar', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdGroup />, label: 'Teams', to: '/teams', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdNotifications />, label: 'Notifications', to: '/notifications', roles: ['user', 'admin', 'superadmin'], badge: unreadCount },
     { divider: true, label: 'Administration', roles: ['admin', 'superadmin'] },
@@ -117,7 +117,7 @@ const DashboardLayout = () => {
             <MdMenu size={24} />
           </button>
 
-          
+
 
           <div className="topbar-actions">
             <button className="topbar-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
@@ -127,13 +127,13 @@ const DashboardLayout = () => {
               <MdNotifications />
               {unreadCount > 0 && <span className="badge" />}
             </button>
-            
+
             {/* Standardized Avatar Trigger */}
             <div className="topbar-user-trigger" onClick={() => navigate('/settings/profile')}>
-               {user?.avatar
+              {user?.avatar
                 ? <img src={`http://localhost:5000${user.avatar}?t=${new Date(user.updatedAt || Date.now()).getTime()}`} alt={user.name} className="topbar-avatar" style={{ objectFit: 'cover' }} />
                 : <div className="avatar mini-initials">{getInitials(user?.name)}</div>
-               }
+              }
             </div>
 
             <button className="btn btn-ghost btn-sm topbar-logout" onClick={handleLogout} title="Logout">

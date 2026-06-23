@@ -105,8 +105,8 @@ export const SystemSettingsPage = () => {
             items: [
               { label: 'Application Name', value: 'TaskFlow' },
               { label: 'Version', value: '1.0.0' },
-              { label: 'Environment', value: process.env.NODE_ENV || 'development' },
-              { label: 'API URL', value: process.env.REACT_APP_API_URL || 'http://localhost:5000/api' },
+              { label: 'Environment', value: import.meta.env.MODE || 'development' },
+              { label: 'API URL', value: import.meta.env.VITE_API_URL || 'http://localhost:5000/api' },
             ]
           },
           {

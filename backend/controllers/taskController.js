@@ -6,7 +6,7 @@ const { sendEmail, emailTemplates } = require('../utils/email');
 const populateTask = (query) =>
   query
     .populate('assignee', 'name email avatar role')
-    .populate('assignedBy', 'name avatar')
+    .populate('assignedBy', 'name avatar role')
     .populate('team', 'name')
     .populate('comments.user', 'name avatar')
     .populate('subtasks.assignee', 'name avatar');
@@ -17,7 +17,11 @@ exports.getAllTasks = async (req, res) => {
     const query = {};
 
     // Role-based filtering
-    if (req.user.role === 'user') query.assignee = req.user._id;
+    if (req.user.role === 'user') {
+      query.assignee = req.user._id;
+    } else if (req.user.role === 'admin') {
+      query.assignedBy = req.user._id;
+    }
 
     if (status) query.status = status;
     if (priority) query.priority = priority;
@@ -110,6 +114,22 @@ exports.updateTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
 
+    const assigner = task.assignedBy ? await User.findById(task.assignedBy) : null;
+    if (req.user.role === 'admin' && assigner && assigner.role === 'superadmin') {
+      const keysToUpdate = Object.keys(req.body).filter(
+        (k) => req.body[k] !== undefined && k !== 'activityHistory' && k !== '$unset'
+      );
+      const hasDisallowedChanges = keysToUpdate.some((k) => k !== 'assignee');
+      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => k !== 'assignee');
+
+      if (hasDisallowedChanges || hasDisallowedUnset) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admins can only modify the assignee field on tasks assigned by a superadmin',
+        });
+      }
+    }
+
     // Track changes
     const changedFields = [];
     const fields = ['title', 'description', 'status', 'priority', 'assignee', 'dueDate', 'tags'];
@@ -169,8 +189,14 @@ exports.updateTask = async (req, res) => {
 
 exports.deleteTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await Task.findById(req.params.id).populate('assignedBy', 'role');
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+
+    if (req.user.role === 'admin' && task.assignedBy && task.assignedBy.role === 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Admins cannot delete tasks assigned by a superadmin' });
+    }
+
+    await Task.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Task deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -296,7 +322,11 @@ exports.updateTaskOrder = async (req, res) => {
 
 exports.getKanbanTasks = async (req, res) => {
   try {
-    const query = req.user.role === 'user' ? { assignee: req.user._id } : {};
+    const query = req.user.role === 'user'
+      ? { assignee: req.user._id }
+      : req.user.role === 'admin'
+        ? { assignedBy: req.user._id }
+        : {};
     if (req.query.team) query.team = req.query.team;
 
     const tasks = await populateTask(Task.find(query).sort({ order: 1, createdAt: -1 }));
@@ -319,7 +349,11 @@ exports.getCalendarTasks = async (req, res) => {
     const query = {
       dueDate: { $gte: new Date(startDate), $lte: new Date(endDate) },
     };
-    if (req.user.role === 'user') query.assignee = req.user._id;
+    if (req.user.role === 'user') {
+      query.assignee = req.user._id;
+    } else if (req.user.role === 'admin') {
+      query.assignedBy = req.user._id;
+    }
 
     const tasks = await populateTask(Task.find(query));
     res.json({ success: true, data: tasks });

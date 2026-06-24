@@ -112,6 +112,7 @@ const TaskListPage = () => {
                   <th>Priority</th>
                   <th>Assigned To</th>
                   <th>Assigned By</th>
+                
                   <th>Start Date</th>
                   <th>Due Date</th>
                   <th>Actions</th>
@@ -122,9 +123,7 @@ const TaskListPage = () => {
                   <tr key={task._id}>
                     <td>
                       <div style={{ fontWeight: 500, cursor: 'pointer', color: 'var(--primary)' }} onClick={() => navigate(`/tasks/${task._id}`)}>{task.title}</div>
-                      {task.tags?.length > 0 && <div style={{ marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {task.tags.slice(0, 3).map((t, i) => <span key={i} className="tag">{t}</span>)}
-                      </div>}
+                   
                     </td>
                     <td><span className={`badge status-${task.status}`}>{task.status.replace('_', ' ')}</span></td>
                     <td><span className={`badge priority-${task.priority}`}>{task.priority}</span></td>
@@ -144,6 +143,7 @@ const TaskListPage = () => {
                         </div>
                       ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
                     </td>
+
                     <td>
                       {task.startDate ? (
                         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>

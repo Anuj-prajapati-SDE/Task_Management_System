@@ -14,7 +14,7 @@ const formatDateTimeLocal = (dateStr) => {
 };
 
 const TaskForm = ({ isEdit = false }) => {
-  const {user} = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
@@ -35,7 +35,7 @@ const TaskForm = ({ isEdit = false }) => {
         const [usersRes, teamsRes] = await Promise.all([API.get('/users'), API.get('/teams')]);
         setUsers(usersRes.data.data);
         setTeams(teamsRes.data.data);
-      } catch {}
+      } catch { }
     };
     fetchData();
 
@@ -103,17 +103,17 @@ const TaskForm = ({ isEdit = false }) => {
   const isReadOnly = isEdit && user.role === 'admin' && taskAssignedByRole === 'superadmin';
 
   const filteredUsers = users.filter((u) => {
-  if (user.role === "superadmin") {
-    return u.role === "admin" || u.role === "user";
-  }
+    if (user.role === "superadmin") {
+      return u.role === "admin" || u.role === "user";
+    }
 
-  if (user.role === "admin") {
-    return u.role === "user";
-  }
+    if (user.role === "admin") {
+      return u.role === "user";
+    }
 
-  
-  return false;
-});
+
+    return false;
+  });
 
   return (
     <div>
@@ -180,22 +180,22 @@ const TaskForm = ({ isEdit = false }) => {
             <div className="card-header"><span className="card-title">Assignment</span></div>
             <div className="form-row">
               <div className="form-group">
-                 <label className="form-label">Assignee</label>
-                   <select
-                    className="form-control"
-                    value={form.assignee}
-                    onChange={(e) =>
+                <label className="form-label">Assignee</label>
+                <select
+                  className="form-control"
+                  value={form.assignee}
+                  onChange={(e) =>
                     setForm({ ...form, assignee: e.target.value })
-                    }>
-                      <option value="">Unassigned</option>
+                  }>
+                  <option value="">Unassigned</option>
 
-                        {filteredUsers.map((u) => (
-                         <option key={u._id} value={u._id}>
-                       {u.name} ({u.email})
-                         </option>
-                        ))}
-                      </select>
-                    </div>
+                  {filteredUsers.map((u) => (
+                    <option key={u._id} value={u._id}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="form-group">
                 <label className="form-label">Team (Optional)</label>
                 <select className="form-control" value={form.team} onChange={e => setForm({ ...form, team: e.target.value })} disabled={isReadOnly}>
@@ -203,20 +203,6 @@ const TaskForm = ({ isEdit = false }) => {
                   {teams.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                 </select>
               </div>
-            </div>
-          </div>
-
-          <div className="card" style={{ marginBottom: 20 }}>
-            <div className="card-header"><span className="card-title">Tags</span></div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <input className="form-control" placeholder="Add a tag..." value={tagInput}
-                onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), !isReadOnly && addTag())} disabled={isReadOnly} />
-              <button type="button" className="btn btn-secondary" onClick={addTag} disabled={isReadOnly}><MdAdd /></button>
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {form.tags.map((tag, i) => (
-                <span key={i} className="tag">{tag} {!isReadOnly && <button type="button" className="tag-remove" onClick={() => removeTag(tag)}><MdClose /></button>}</span>
-              ))}
             </div>
           </div>
 

@@ -130,50 +130,7 @@ export const AccountSettingsPage = () => {
   );
 };
 
-// ===== NOTIFICATION SETTINGS =====
-export const NotificationSettingsPage = () => {
-  const { user, updateUser } = useAuth();
-  const [prefs, setPrefs] = useState(user?.notificationPreferences || { email: true, push: true, taskAssigned: true, taskDue: true, mentions: true });
 
-  const handleToggle = async (key) => {
-    const updated = { ...prefs, [key]: !prefs[key] };
-    setPrefs(updated);
-    try {
-      const { data } = await API.put('/users/profile', { notificationPreferences: updated });
-      updateUser(data.data); toast.success('Preferences saved');
-    } catch { toast.error('Failed'); }
-  };
-
-  const settings = [
-    { key: 'email', label: 'Email Notifications', desc: 'Receive notifications via email' },
-    { key: 'push', label: 'Push Notifications', desc: 'In-app real-time notifications' },
-    { key: 'taskAssigned', label: 'Task Assignments', desc: 'When a task is assigned to you' },
-    { key: 'taskDue', label: 'Due Date Reminders', desc: 'Reminders before tasks are due' },
-    { key: 'mentions', label: 'Mentions', desc: 'When someone mentions you in a comment' },
-  ];
-
-  return (
-    <div>
-      <div className="page-header"><h1>Notification Settings</h1><p>Control how you receive notifications.</p></div>
-      <div style={{ maxWidth: 600, margin: '0 auto' }}>
-        <div className="card">
-          {settings.map(s => (
-            <div key={s.key} className="flex-between" style={{ padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
-              <div>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>{s.label}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.desc}</div>
-              </div>
-              <div onClick={() => handleToggle(s.key)}
-                style={{ width: 44, height: 24, borderRadius: 12, background: prefs[s.key] ? 'var(--primary)' : 'var(--border)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-                <div style={{ position: 'absolute', top: 2, left: prefs[s.key] ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ===== SECURITY SETTINGS =====
 export const SecuritySettingsPage = () => {

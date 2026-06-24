@@ -40,10 +40,9 @@ import TeamsPage from './pages/teams/TeamsPage';
 import TeamDetailPage from './pages/teams/TeamDetailPage';
 
 // Other Pages
-import NotificationsPage from './pages/NotificationsPage';
+
 import ProfilePage from './pages/settings/ProfilePage';
 import AccountSettingsPage from './pages/settings/AccountSettingsPage';
-import NotificationSettingsPage from './pages/settings/NotificationSettingsPage';
 import SecuritySettingsPage from './pages/settings/SecuritySettingsPage';
 import ReportsPage from './pages/analytics/ReportsPage';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
@@ -119,13 +118,12 @@ function AppRoutes() {
         <Route path="teams" element={<TeamsPage />} />
         <Route path="teams/:id" element={<TeamDetailPage />} />
 
-        {/* Notifications */}
-        <Route path="notifications" element={<NotificationsPage />} />
+
 
         {/* Settings */}
         <Route path="settings/profile" element={<ProfilePage />} />
         <Route path="settings/account" element={<AccountSettingsPage />} />
-        <Route path="settings/notifications" element={<NotificationSettingsPage />} />
+
         <Route path="settings/security" element={<SecuritySettingsPage />} />
 
         {/* Admin */}
@@ -135,7 +133,7 @@ function AppRoutes() {
         <Route path="reports" element={<ProtectedRoute roles={['admin', 'superadmin']}><ReportsPage /></ProtectedRoute>} />
 
         {/* Super Admin */}
-        <Route path="audit-logs" element={<ProtectedRoute roles={['superadmin']}><AuditLogsPage /></ProtectedRoute>} />
+        {/* <Route path="audit-logs" element={<ProtectedRoute roles={['superadmin']}><AuditLogsPage /></ProtectedRoute>} /> */}
         <Route path="system-settings" element={<ProtectedRoute roles={['superadmin']}><SystemSettingsPage /></ProtectedRoute>} />
       </Route>
 

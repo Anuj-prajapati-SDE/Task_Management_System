@@ -1,7 +1,7 @@
 const Team = require('../models/Team');
 const User = require('../models/User');
 const Task = require('../models/Task');
-const { createNotification } = require('../utils/notification');
+
 const crypto = require('crypto');
 
 exports.getAllTeams = async (req, res) => {
@@ -75,16 +75,7 @@ exports.addMember = async (req, res) => {
     team.members.push({ user: userId, role });
     await team.save();
 
-    const io = req.app.get('io');
-    await createNotification(io, {
-      recipient: userId,
-      sender: req.user._id,
-      type: 'team_joined',
-      title: 'Added to Team',
-      message: `${req.user.name} added you to team "${team.name}"`,
-      relatedTeam: team._id,
-      link: `/teams/${team._id}`,
-    });
+
 
     const updated = await Team.findById(team._id).populate('members.user', 'name avatar email');
     res.json({ success: true, data: updated });

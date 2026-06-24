@@ -1,6 +1,6 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
-const { createNotification } = require('../utils/notification');
+
 const { sendEmail, emailTemplates } = require('../utils/email');
 
 const populateTask = (query) =>
@@ -20,7 +20,7 @@ exports.getAllTasks = async (req, res) => {
     if (req.user.role === 'user') {
       query.assignee = req.user._id;
     } else if (req.user.role === 'admin') {
-      query.assignedBy = req.user._id;
+      query.$or = [{ assignedBy: req.user._id }, { assignee: req.user._id }];
     }
 
     if (status) query.status = status;
@@ -61,7 +61,7 @@ exports.createTask = async (req, res) => {
       title, description, status, priority, dueDate, startDate, tags, labels, dependencies, isRecurring, recurringPattern,
       assignedBy: req.user._id,
     };
-    
+
     if (assignee && assignee !== '' && assignee !== 'null') taskData.assignee = assignee;
     if (team && team !== '' && team !== 'null') taskData.team = team;
 
@@ -86,19 +86,10 @@ exports.createTask = async (req, res) => {
 
     // Notify assignee
     if (assignee && assignee !== req.user._id.toString()) {
-      const io = req.app.get('io');
-      await createNotification(io, {
-        recipient: assignee,
-        sender: req.user._id,
-        type: 'task_assigned',
-        title: 'New Task Assigned',
-        message: `${req.user.name} assigned you: "${title}"`,
-        relatedTask: task._id,
-        link: `/tasks/${task._id}`,
-      });
+
       const assigneeUser = await User.findById(assignee);
       if (assigneeUser?.notificationPreferences?.email) {
-        await sendEmail({ to: assigneeUser.email, subject: 'New Task Assigned', html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) }).catch(() => {});
+        await sendEmail({ to: assigneeUser.email, subject: 'New Task Assigned', html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) }).catch(() => { });
       }
     }
 
@@ -119,20 +110,20 @@ exports.updateTask = async (req, res) => {
       const keysToUpdate = Object.keys(req.body).filter(
         (k) => req.body[k] !== undefined && k !== 'activityHistory' && k !== '$unset'
       );
-      const hasDisallowedChanges = keysToUpdate.some((k) => k !== 'assignee');
-      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => k !== 'assignee');
+      const hasDisallowedChanges = keysToUpdate.some((k) => k !== 'assignee' && k !== 'assigneeReview' && k !== 'assigneeCompleted');
+      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => k !== 'assignee' && k !== 'assigneeReview' && k !== 'assigneeCompleted');
 
       if (hasDisallowedChanges || hasDisallowedUnset) {
         return res.status(403).json({
           success: false,
-          message: 'Admins can only modify the assignee field on tasks assigned by a superadmin',
+          message: 'Admins can only modify the assignee and assignee progress fields on tasks assigned by a superadmin',
         });
       }
     }
 
     // Track changes
     const changedFields = [];
-    const fields = ['title', 'description', 'status', 'priority', 'assignee', 'dueDate', 'tags'];
+    const fields = ['title', 'description', 'status', 'priority', 'assignee', 'dueDate', 'tags', 'assigneeReview', 'assigneeCompleted'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined && String(task[field]) !== String(req.body[field])) {
         changedFields.push({ user: req.user._id, action: `updated ${field}`, field, oldValue: task[field], newValue: req.body[field] });
@@ -168,16 +159,7 @@ exports.updateTask = async (req, res) => {
 
     // Notify assignee if changed
     if (req.body.assignee && req.body.assignee !== task.assignee?.toString()) {
-      const io = req.app.get('io');
-      await createNotification(io, {
-        recipient: req.body.assignee,
-        sender: req.user._id,
-        type: 'task_assigned',
-        title: 'Task Assigned to You',
-        message: `${req.user.name} assigned you: "${task.title}"`,
-        relatedTask: task._id,
-        link: `/tasks/${task._id}`,
-      });
+
     }
 
     const populated = await populateTask(Task.findById(updated._id));
@@ -215,17 +197,7 @@ exports.addComment = async (req, res) => {
     const io = req.app.get('io');
     // Notify mentioned users
     if (mentions && mentions.length > 0) {
-      for (const mentionedUserId of mentions) {
-        await createNotification(io, {
-          recipient: mentionedUserId,
-          sender: req.user._id,
-          type: 'mention',
-          title: 'You were mentioned',
-          message: `${req.user.name} mentioned you in task "${task.title}"`,
-          relatedTask: task._id,
-          link: `/tasks/${task._id}`,
-        });
-      }
+      
     }
 
     const populated = await populateTask(Task.findById(task._id));
@@ -325,7 +297,7 @@ exports.getKanbanTasks = async (req, res) => {
     const query = req.user.role === 'user'
       ? { assignee: req.user._id }
       : req.user.role === 'admin'
-        ? { assignedBy: req.user._id }
+        ? { $or: [{ assignedBy: req.user._id }, { assignee: req.user._id }] }
         : {};
     if (req.query.team) query.team = req.query.team;
 
@@ -352,11 +324,123 @@ exports.getCalendarTasks = async (req, res) => {
     if (req.user.role === 'user') {
       query.assignee = req.user._id;
     } else if (req.user.role === 'admin') {
-      query.assignedBy = req.user._id;
+      query.$or = [{ assignedBy: req.user._id }, { assignee: req.user._id }];
     }
 
     const tasks = await populateTask(Task.find(query));
     res.json({ success: true, data: tasks });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.submitTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+
+    // Only assignee can submit
+    if (String(task.assignee) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Only the assignee can submit the task' });
+    }
+
+    const { notes } = req.body;
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      attachments = req.files.map((file) => ({
+        filename: file.filename,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        path: `/uploads/${file.filename}`,
+        uploadedBy: req.user._id,
+      }));
+    }
+
+    if (!task.submission) {
+      task.submission = {};
+    }
+    task.submission.notes = notes;
+    task.submission.attachments = attachments;
+    task.submission.status = 'pending';
+    task.submission.submittedAt = new Date();
+    task.submission.isSubmitted = true;
+    task.markModified('submission');
+    task.status = 'review'; // Also change overall status to review
+
+    task.activityHistory.push({
+      user: req.user._id,
+      action: 'submitted task',
+      field: 'submission',
+      newValue: 'pending',
+    });
+
+    await task.save();
+    
+    // Notify Assigner
+    if (task.assignedBy && String(task.assignedBy) !== String(req.user._id)) {
+
+    }
+
+    const updatedTask = await populateTask(Task.findById(task._id));
+    res.json({ success: true, data: updatedTask });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.reviewSubmission = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+
+    // Only assigner or superadmin can review
+    if (String(task.assignedBy) !== String(req.user._id) && req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to review this submission' });
+    }
+
+    const { status, reviewNotes } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: `Invalid status: ${status}` });
+    }
+
+    if (!task.submission) {
+      return res.status(400).json({ success: false, message: 'Task submission object is missing' });
+    }
+
+    if (!task.submission.isSubmitted) {
+      return res.status(400).json({ success: false, message: 'Task submission.isSubmitted is false' });
+    }
+
+    task.submission.status = status;
+    task.submission.reviewedAt = new Date();
+    task.submission.reviewNotes = reviewNotes;
+    task.markModified('submission');
+
+    if (status === 'approved') {
+      task.status = 'completed';
+      task.completedAt = new Date();
+    } else if (status === 'rejected') {
+      task.status = 'in_progress';
+      task.submission.isSubmitted = false; // Allow resubmission
+    }
+
+    task.activityHistory.push({
+      user: req.user._id,
+      action: `submission ${status}`,
+      field: 'submission.status',
+      newValue: status,
+    });
+
+    await task.save();
+
+    // Notify Assignee
+    if (task.assignee) {
+
+    }
+
+    const updatedTask = await populateTask(Task.findById(task._id));
+    res.json({ success: true, data: updatedTask });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

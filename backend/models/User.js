@@ -25,13 +25,7 @@ const userSchema = new mongoose.Schema(
     department: { type: String, default: '' },
     position: { type: String, default: '' },
     phone: { type: String, default: '' },
-    notificationPreferences: {
-      email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true },
-      taskAssigned: { type: Boolean, default: true },
-      taskDue: { type: Boolean, default: true },
-      mentions: { type: Boolean, default: true },
-    },
+
     theme: { type: String, enum: ['light', 'dark'], default: 'light' },
   },
   { timestamps: true }

@@ -95,7 +95,7 @@ const DroppableColumn = ({ column, tasks, navigate }) => {
 };
 
 const KanbanPage = () => {
-   const { user } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [columns, setColumns] = useState({ pending: [], in_progress: [], review: [], completed: [], cancelled: [] });
   const [loading, setLoading] = useState(true);
@@ -193,30 +193,30 @@ const KanbanPage = () => {
         <div><h1>Kanban Board</h1><p>Drag and drop tasks to update their status.</p></div>
         <div className="header-actions">
           {user.role !== 'user' && (
-  <>
-    <select
-      className="form-control"
-      style={{ width: 160, fontSize: '13px', padding: '6px 10px' }}
-      value={teamFilter}
-      onChange={(e) => setTeamFilter(e.target.value)}
-    >
-      <option value="">All Teams</option>
-      {teams.map((t) => (
-        <option key={t._id} value={t._id}>
-          {t.name}
-        </option>
-      ))}
-    </select>
+            <>
+              <select
+                className="form-control"
+                style={{ width: 160, fontSize: '13px', padding: '6px 10px' }}
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+              >
+                <option value="">All Teams</option>
+                {teams.map((t) => (
+                  <option key={t._id} value={t._id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
 
-    <button
-      className="btn btn-primary"
-      onClick={() => navigate('/tasks/create')}
-    >
-      <MdAdd /> New Task
-    </button>
-  </>
-)}
-          
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate('/tasks/create')}
+              >
+                <MdAdd /> New Task
+              </button>
+            </>
+          )}
+
         </div>
       </div>
 

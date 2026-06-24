@@ -15,26 +15,11 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [theme, setTheme] = useState(user?.theme || 'light');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
-
-  useEffect(() => {
-    const fetchUnread = async () => {
-      try {
-        const { data } = await API.get('/notifications?isRead=false&limit=1');
-        setUnreadCount(data.unreadCount || 0);
-      } catch { }
-    };
-    fetchUnread();
-
-    const handler = () => fetchUnread();
-    window.addEventListener('new_notification', handler);
-    return () => window.removeEventListener('new_notification', handler);
-  }, []);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
  
@@ -44,12 +29,12 @@ const DashboardLayout = () => {
     // { icon: <MdViewKanban />, label: 'Kanban Board', to: '/tasks/kanban', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdCalendarMonth />, label: 'Calendar', to: '/calendar', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdGroup />, label: 'Teams', to: '/teams', roles: ['user', 'admin', 'superadmin'] },
-    { icon: <MdNotifications />, label: 'Notifications', to: '/notifications', roles: ['user', 'admin', 'superadmin'], badge: unreadCount },
-    { divider: true, label: 'Administration', roles: ['admin', 'superadmin'] },
+
+    // { divider: true, label: 'Administration', roles: ['admin', 'superadmin'] },
     { icon: <MdPeople />, label: 'Users', to: '/users', roles: ['admin', 'superadmin'] },
     { icon: <MdBarChart />, label: 'Reports', to: '/reports', roles: ['admin', 'superadmin'] },
-    { divider: true, label: 'Super Admin', roles: ['superadmin'] },
-    { icon: <MdHistory />, label: 'Audit Logs', to: '/audit-logs', roles: ['superadmin'] },
+    // { divider: true, label: 'Super Admin', roles: ['superadmin'] },
+    // { icon: <MdHistory />, label: 'Audit Logs', to: '/audit-logs', roles: ['superadmin'] },
     { icon: <MdSecurity />, label: 'System Settings', to: '/system-settings', roles: ['superadmin'] },
   ];
 
@@ -123,10 +108,7 @@ const DashboardLayout = () => {
             <button className="topbar-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
               {theme === 'light' ? <LuMoon /> : <LuSun />}
             </button>
-            <button className="topbar-btn" onClick={() => navigate('/notifications')}>
-              <MdNotifications />
-              {unreadCount > 0 && <span className="badge" />}
-            </button>
+
 
             {/* Standardized Avatar Trigger */}
             <div className="topbar-user-trigger" onClick={() => navigate('/settings/profile')}>

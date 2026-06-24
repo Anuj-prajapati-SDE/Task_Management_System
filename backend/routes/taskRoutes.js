@@ -7,6 +7,7 @@ const {
   addComment, deleteComment, addSubtask, updateSubtask, deleteSubtask,
   startTimeTracking, stopTimeTracking, updateTaskOrder,
   getKanbanTasks, getCalendarTasks,
+  submitTask, reviewSubmission,
 } = require('../controllers/taskController');
 
 router.use(protect);
@@ -19,6 +20,10 @@ router.get('/calendar', getCalendarTasks);
 router.get('/:id', getTaskById);
 router.put('/:id', upload.array('attachments', 5), updateTask);
 router.delete('/:id', authorize('admin', 'superadmin'), deleteTask);
+
+// Submissions & Reviews
+router.post('/:id/submit', upload.array('attachments', 5), submitTask);
+router.post('/:id/review', reviewSubmission);
 
 // Comments
 router.post('/:id/comments', addComment);

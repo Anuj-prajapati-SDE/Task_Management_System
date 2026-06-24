@@ -396,9 +396,57 @@ export const SuperAdminDashboard = () => {
                 <MdArrowForward style={{ marginLeft: "auto" }} />
               </button>
             ))}
-          </div>
         </div>
       </div>
+      </div>
+      {/* Pending Submissions */}
+      {data?.pendingSubmissions?.length > 0 && (
+        <div className="card" style={{ marginBottom: 20, border: '1px solid var(--danger)' }}>
+          <div className="card-header">
+            <span className="card-title" style={{ color: 'var(--danger)' }}>
+              <MdWarning style={{ verticalAlign: 'middle', marginRight: 8 }} />
+              Pending Task Submissions
+            </span>
+          </div>
+          <div className="table-wrapper">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Task Title</th>
+                  <th>Submitted By</th>
+                  <th>Submitted At</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.pendingSubmissions.map(task => (
+                  <tr key={task._id}>
+                    <td>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{task.title}</div>
+                    </td>
+                    <td>
+                      {task.assignee ? (
+                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                          <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{task.assignee?.name?.[0]}</div>
+                          <span style={{ fontSize: 13 }}>{task.assignee?.name}</span>
+                        </div>
+                      ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                      {task.submission?.submittedAt ? format(new Date(task.submission.submittedAt), 'MMM d, yyyy h:mm a') : '—'}
+                    </td>
+                    <td>
+                      <button className="btn btn-primary btn-sm" onClick={() => navigate(`/tasks/${task._id}`)}>
+                        Review Submission
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-header">

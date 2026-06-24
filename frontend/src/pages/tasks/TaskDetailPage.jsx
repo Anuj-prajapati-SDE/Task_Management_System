@@ -5,9 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
-  MdEdit, MdDelete, MdAdd, MdPlayArrow, MdStop, MdAttachFile,
-  MdComment, MdCheckBox, MdCheckBoxOutlineBlank, MdPerson,
-  MdCalendarToday, MdFlag, MdLabel, MdTimer, MdArrowBack
+  MdEdit, MdDelete, MdAttachFile,
+  MdComment,
+  MdCalendarToday, MdFlag, MdArrowBack
 } from 'react-icons/md';
 
 const TaskDetailPage = () => {
@@ -16,21 +16,21 @@ const TaskDetailPage = () => {
   const { user } = useAuth();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('comments');
+  const [activeTab, setActiveTab] = useState('attachments');
   const [comment, setComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [newSubtask, setNewSubtask] = useState('');
-  const [addingSubtask, setAddingSubtask] = useState(false);
-  const [tracking, setTracking] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [submissionNotes, setSubmissionNotes] = useState('');
+  const [submissionFiles, setSubmissionFiles] = useState([]);
+  const [submittingTask, setSubmittingTask] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewingTask, setReviewingTask] = useState(false);
 
   const fetchTask = async () => {
     try {
       const { data } = await API.get(`/tasks/${id}`);
       setTask(data.data);
-      // Check if user has active time entry
-      const activeEntry = data.data.timeEntries?.find(e => e.user?._id === user._id && !e.endTime);
-      setTracking(!!activeEntry);
+
     } catch { toast.error('Task not found'); navigate('/tasks'); }
     finally { setLoading(false); }
   };
@@ -53,6 +53,16 @@ const TaskDetailPage = () => {
     finally { setStatusUpdating(false); }
   };
 
+  const handleUpdateAssigneeFlags = async (field, value) => {
+    try {
+      await API.put(`/tasks/${id}`, { [field]: value });
+      setTask(prev => ({ ...prev, [field]: value }));
+      toast.success('Progress updated');
+    } catch (err) {
+      toast.error('Failed to update progress');
+    }
+  };
+
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!comment.trim()) return;
@@ -73,58 +83,42 @@ const TaskDetailPage = () => {
     } catch { toast.error('Failed to delete comment'); }
   };
 
-  const handleAddSubtask = async () => {
-    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
-      toast.error('Admins cannot modify subtasks on tasks assigned by a superadmin');
+
+  const handleSubmitTask = async (e) => {
+    e.preventDefault();
+    if (!submissionNotes.trim() && submissionFiles.length === 0) {
+      toast.error('Please add some notes or attachments to submit.');
       return;
     }
-    if (!newSubtask.trim()) return;
-    setAddingSubtask(true);
+    setSubmittingTask(true);
+    const formData = new FormData();
+    formData.append('notes', submissionNotes);
+    submissionFiles.forEach(f => formData.append('attachments', f));
     try {
-      const { data } = await API.post(`/tasks/${id}/subtasks`, { title: newSubtask });
+      const { data } = await API.post(`/tasks/${id}/submit`, formData);
       setTask(data.data);
-      setNewSubtask('');
-    } catch { toast.error('Failed to add subtask'); }
-    finally { setAddingSubtask(false); }
+      setSubmissionNotes('');
+      setSubmissionFiles([]);
+      toast.success('Task submitted successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit task');
+    } finally {
+      setSubmittingTask(false);
+    }
   };
 
-  const handleToggleSubtask = async (subtask) => {
-    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
-      toast.error('Admins cannot modify subtasks on tasks assigned by a superadmin');
-      return;
-    }
+  const handleReviewSubmission = async (status) => {
+    setReviewingTask(true);
     try {
-      const { data } = await API.put(`/tasks/${id}/subtasks/${subtask._id}`, {
-        title: subtask.title, isCompleted: !subtask.isCompleted
-      });
+      const { data } = await API.post(`/tasks/${id}/review`, { status, reviewNotes });
       setTask(data.data);
-    } catch { toast.error('Failed to update subtask'); }
-  };
-
-  const handleDeleteSubtask = async (subtaskId) => {
-    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
-      toast.error('Admins cannot modify subtasks on tasks assigned by a superadmin');
-      return;
+      setReviewNotes('');
+      toast.success(`Submission ${status}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to review submission');
+    } finally {
+      setReviewingTask(false);
     }
-    try {
-      await API.delete(`/tasks/${id}/subtasks/${subtaskId}`);
-      setTask(prev => ({ ...prev, subtasks: prev.subtasks.filter(s => s._id !== subtaskId) }));
-    } catch { toast.error('Failed to delete subtask'); }
-  };
-
-  const handleTimeTracking = async () => {
-    try {
-      if (tracking) {
-        await API.post(`/tasks/${id}/time/stop`);
-        toast.success('Timer stopped');
-        setTracking(false);
-      } else {
-        await API.post(`/tasks/${id}/time/start`, { note: '' });
-        toast.success('Timer started');
-        setTracking(true);
-      }
-      fetchTask();
-    } catch { toast.error('Failed to toggle timer'); }
   };
 
   const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -143,12 +137,6 @@ const TaskDetailPage = () => {
 
   const isReadOnlyExceptAssignee = user.role === 'admin' && task.assignedBy?.role === 'superadmin';
 
-  const completedSubtasks = task.subtasks?.filter(s => s.isCompleted).length || 0;
-  const totalSubtasks = task.subtasks?.length || 0;
-  const subtaskProgress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
-  const totalHours = Math.floor((task.totalTimeSpent || 0) / 60);
-  const totalMins = (task.totalTimeSpent || 0) % 60;
-
   return (
     <div>
       {/* Header */}
@@ -166,9 +154,9 @@ const TaskDetailPage = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className={`btn ${tracking ? 'btn-danger' : 'btn-secondary'}`} onClick={handleTimeTracking}>
+          {/* <button className={`btn ${tracking ? 'btn-danger' : 'btn-secondary'}`} onClick={handleTimeTracking}>
             {tracking ? <><MdStop /> Stop Timer</> : <><MdPlayArrow /> Start Timer</>}
-          </button>
+          </button> */}
           <button className="btn btn-secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
             <MdEdit /> {isReadOnlyExceptAssignee ? 'Reassign Task' : 'Edit'}
           </button>
@@ -187,62 +175,27 @@ const TaskDetailPage = () => {
           </div>
 
           {/* Status Update */}
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-header"><span className="card-title">Update Status</span></div>
-            <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-              {['pending', 'in_progress', 'review', 'completed', 'cancelled'].map(s => (
-                <button key={s} className={`btn btn-sm ${task.status === s ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => handleStatusChange(s)} disabled={statusUpdating || isReadOnlyExceptAssignee}>
-                  {s.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Subtasks */}
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-header">
-              <span className="card-title">Subtasks ({completedSubtasks}/{totalSubtasks})</span>
-            </div>
-            {totalSubtasks > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <div className="progress-bar"><div className="progress" style={{ width: `${subtaskProgress}%` }} /></div>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                  {Math.round(subtaskProgress)}% complete
-                </span>
+          {(user.role === 'superadmin' || task.assignedBy?._id === user._id) && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-header"><span className="card-title">Update Status</span></div>
+              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                {['pending','review', 'in_progress', 'completed', 'cancelled'].map(s => (
+                  <button key={s} className={`btn btn-sm ${task.status === s ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => handleStatusChange(s)} disabled={statusUpdating}>
+                    {s.replace('_', ' ')}
+                  </button>
+                ))}
               </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-              {task.subtasks?.map(subtask => (
-                <div key={subtask._id} className="flex-between" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                    <button onClick={() => !isReadOnlyExceptAssignee && handleToggleSubtask(subtask)} style={{ color: subtask.isCompleted ? 'var(--success)' : 'var(--text-muted)', fontSize: 20, lineHeight: 1, cursor: isReadOnlyExceptAssignee ? 'not-allowed' : 'pointer', background: 'none', border: 'none', padding: 0 }}>
-                      {subtask.isCompleted ? <MdCheckBox /> : <MdCheckBoxOutlineBlank />}
-                    </button>
-                    <span style={{ fontSize: 13, textDecoration: subtask.isCompleted ? 'line-through' : 'none', color: subtask.isCompleted ? 'var(--text-muted)' : 'var(--text)' }}>
-                      {subtask.title}
-                    </span>
-                  </div>
-                  {!isReadOnlyExceptAssignee && (
-                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteSubtask(subtask._id)}>
-                      <MdDelete />
-                    </button>
-                  )}
-                </div>
-              ))}
             </div>
-            <div className="flex gap-2">
-              <input className="form-control" placeholder="Add subtask..." value={newSubtask}
-                onChange={e => setNewSubtask(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), !isReadOnlyExceptAssignee && handleAddSubtask())} disabled={isReadOnlyExceptAssignee} />
-              <button className="btn btn-secondary" onClick={handleAddSubtask} disabled={addingSubtask || isReadOnlyExceptAssignee}><MdAdd /></button>
-            </div>
-          </div>
+          )}
+
+
+         
 
           {/* Tabs: Comments | Attachments | Activity | Time */}
           <div className="card">
             <div className="tabs">
-              {['comments', 'attachments', 'time', 'activity'].map(tab => (
+              {['attachments','comments' , 'activity'].map(tab => (
                 <div key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   {tab === 'comments' && task.comments?.length > 0 && <span className="badge badge-primary" style={{ marginLeft: 6 }}>{task.comments.length}</span>}
@@ -325,27 +278,6 @@ const TaskDetailPage = () => {
               </div>
             )}
 
-            {/* Time Tracking */}
-            {activeTab === 'time' && (
-              <div>
-                <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius)', padding: '16px', marginBottom: 16, textAlign: 'center' }}>
-                  <MdTimer style={{ fontSize: 36, color: 'var(--primary)', marginBottom: 8 }} />
-                  <div style={{ fontSize: 28, fontWeight: 700 }}>{totalHours}h {totalMins}m</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Total time spent</div>
-                  <button className={`btn ${tracking ? 'btn-danger' : 'btn-primary'} btn-sm`} style={{ marginTop: 12 }} onClick={handleTimeTracking}>
-                    {tracking ? <><MdStop /> Stop Timer</> : <><MdPlayArrow /> Start Timer</>}
-                  </button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {task.timeEntries?.filter(e => e.endTime).slice(-10).reverse().map((entry, i) => (
-                    <div key={i} className="flex-between" style={{ padding: '8px 12px', background: 'var(--bg)', borderRadius: 'var(--radius)', fontSize: 12 }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{format(new Date(entry.startTime), 'MMM d, h:mm a')}</span>
-                      <span style={{ fontWeight: 600 }}>{Math.floor(entry.duration / 60)}h {entry.duration % 60}m</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Activity */}
             {activeTab === 'activity' && (
@@ -371,10 +303,79 @@ const TaskDetailPage = () => {
               </div>
             )}
           </div>
+           {/* Task Submission Section */}
+          <div className="card" style={{ marginTop: 16 }}>
+            <div className="card-header"><span className="card-title">Task Submission</span></div>
+            {!task.submission?.isSubmitted ? (
+              // Not submitted yet
+              (task.assignee?._id === user._id) ? (
+                <form onSubmit={handleSubmitTask}>
+                  <div className="form-group">
+                    <label className="form-label">Submission Notes</label>
+                    <textarea className="form-control" rows={3} placeholder="Describe what you did..." value={submissionNotes} onChange={e => setSubmissionNotes(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Attachments (Optional)</label>
+                    <input type="file" className="form-control" multiple onChange={e => setSubmissionFiles(Array.from(e.target.files))} />
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={submittingTask}>
+                    {submittingTask ? 'Submitting...' : 'Submit Task'}
+                  </button>
+                </form>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Waiting for the assignee to submit their work.</p>
+              )
+            ) : (
+              // Submitted
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Submission Status</div>
+                  <span className={`badge ${task.submission.status === 'pending' ? 'status-pending' : task.submission.status === 'approved' ? 'status-completed' : 'status-cancelled'}`}>
+                    {task.submission.status.toUpperCase()}
+                  </span>
+                </div>
+                {task.submission.notes && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Notes</div>
+                    <p style={{ fontSize: 13, background: 'var(--bg-secondary)', padding: 10, borderRadius: 'var(--radius)' }}>{task.submission.notes}</p>
+                  </div>
+                )}
+                {task.submission.attachments?.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Attachments</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {task.submission.attachments.map((file, i) => (
+                        <a key={i} href={`http://localhost:5000${file.path}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4 }}><MdAttachFile /> {file.originalName}</a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {task.submission.status === 'pending' && (task.assignedBy?._id === user._id || user.role === 'superadmin') && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">Review Notes (Optional)</label>
+                      <textarea className="form-control" rows={2} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} placeholder="Add feedback..." />
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => handleReviewSubmission('approved')} disabled={reviewingTask}>Approve</button>
+                      <button className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => handleReviewSubmission('rejected')} disabled={reviewingTask}>Reject</button>
+                    </div>
+                  </div>
+                )}
+                {task.submission.reviewNotes && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Review Feedback</div>
+                    <p style={{ fontSize: 13 }}>{task.submission.reviewNotes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Column - Meta */}
         <div>
+
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-header"><span className="card-title">Details</span></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -434,14 +435,14 @@ const TaskDetailPage = () => {
           </div>
 
           {/* Tags */}
-          {task.tags?.length > 0 && (
+          {/* {task.tags?.length > 0 && (
             <div className="card" style={{ marginBottom: 16 }}>
               <div className="card-header"><span className="card-title"><MdLabel style={{ verticalAlign: 'middle', marginRight: 4 }} />Tags</span></div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {task.tags.map((tag, i) => <span key={i} className="tag">{tag}</span>)}
               </div>
             </div>
-          )}
+          )} */}
 
         </div>
       </div>

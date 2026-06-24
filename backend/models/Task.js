@@ -23,6 +23,25 @@ const timeEntrySchema = new mongoose.Schema({
   note: String,
 });
 
+const submissionSchema = new mongoose.Schema({
+  notes: { type: String },
+  attachments: [
+    {
+      filename: String,
+      originalName: String,
+      mimetype: String,
+      size: Number,
+      path: String,
+      uploadedAt: { type: Date, default: Date.now },
+    },
+  ],
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  submittedAt: { type: Date },
+  isSubmitted: { type: Boolean, default: false },
+  reviewedAt: { type: Date },
+  reviewNotes: { type: String },
+});
+
 const activitySchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   action: String,
@@ -62,6 +81,9 @@ const taskSchema = new mongoose.Schema(
     ],
     comments: [commentSchema],
     subtasks: [subtaskSchema],
+    submission: submissionSchema,
+    assigneeReview: { type: Boolean, default: false },
+    assigneeCompleted: { type: Boolean, default: false },
     timeEntries: [timeEntrySchema],
     totalTimeSpent: { type: Number, default: 0 }, // in minutes
     dependencies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],

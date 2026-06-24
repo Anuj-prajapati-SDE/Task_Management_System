@@ -9,7 +9,7 @@ const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Team = require('./models/Team');
 const Task = require('./models/Task');
-const Notification = require('./models/Notification');
+
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/task_management_db';
 
@@ -280,41 +280,7 @@ const seed = async () => {
       }
     });
 
-    // Add sample notifications
-    await Notification.insertMany([
-      {
-        recipient: demoUser._id,
-        sender: admin._id,
-        type: 'task_assigned',
-        title: 'New Task Assigned',
-        message: 'Admin User assigned you: "Review pull requests"',
-        relatedTask: tasks[10]._id,
-        link: `/tasks/${tasks[10]._id}`,
-        isRead: false,
-      },
-      {
-        recipient: demoUser._id,
-        sender: admin._id,
-        type: 'task_assigned',
-        title: 'New Task Assigned',
-        message: 'Admin User assigned you: "Mobile responsive design audit"',
-        relatedTask: tasks[3]._id,
-        link: `/tasks/${tasks[3]._id}`,
-        isRead: false,
-      },
-      {
-        recipient: demoUser._id,
-        sender: alice._id,
-        type: 'comment_added',
-        title: 'New Comment',
-        message: 'Alice Johnson commented on "Implement JWT refresh token rotation"',
-        relatedTask: tasks[1]._id,
-        link: `/tasks/${tasks[1]._id}`,
-        isRead: true,
-      },
-    ]);
 
-    console.log('Created notifications');
 
     console.log('\n✅ Seed complete!\n');
     console.log('Demo credentials:');

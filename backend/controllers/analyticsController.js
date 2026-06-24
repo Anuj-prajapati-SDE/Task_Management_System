@@ -94,9 +94,18 @@ exports.getAdminDashboard = async (req, res) => {
       monthlyTrend.push({ month: start.toLocaleString('default', { month: 'short' }), created, completed: done });
     }
 
+    const pendingSubmissions = await Task.find({
+      ...taskQuery,
+      status: { $nin: ['completed', 'cancelled'] },
+      $or: [
+        { 'submission.isSubmitted': true, 'submission.status': 'pending' },
+        { status: 'review' }
+      ]
+    }).select('title assignee dueDate submission createdAt').populate('assignee', 'name email avatar').limit(10).sort({ 'submission.submittedAt': -1, updatedAt: -1 });
+
     res.json({
       success: true,
-      data: { stats: { totalUsers, activeUsers, totalTasks, completedTasks, totalTeams, overdueTasks }, tasksByStatus, tasksByPriority, topPerformers, monthlyTrend },
+      data: { stats: { totalUsers, activeUsers, totalTasks, completedTasks, totalTeams, overdueTasks }, tasksByStatus, tasksByPriority, topPerformers, monthlyTrend, pendingSubmissions },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -112,8 +121,16 @@ exports.getSuperAdminDashboard = async (req, res) => {
     ]);
     const usersByRole = await User.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }]);
     const recentUsers = await User.find().sort({ createdAt: -1 }).limit(10).select('name email role isActive createdAt');
+    
+    const pendingSubmissions = await Task.find({
+      status: { $nin: ['completed', 'cancelled'] },
+      $or: [
+        { 'submission.isSubmitted': true, 'submission.status': 'pending' },
+        { status: 'review' }
+      ]
+    }).select('title assignee dueDate submission createdAt').populate('assignee', 'name email avatar').limit(10).sort({ 'submission.submittedAt': -1, updatedAt: -1 });
 
-    res.json({ success: true, data: { stats: { totalUsers, totalTasks, totalTeams }, usersByRole, recentUsers } });
+    res.json({ success: true, data: { stats: { totalUsers, totalTasks, totalTeams }, usersByRole, recentUsers, pendingSubmissions } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

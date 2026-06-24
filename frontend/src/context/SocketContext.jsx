@@ -14,10 +14,7 @@ export const SocketProvider = ({ children }) => {
       socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', { transports: ['websocket'] });
       socketRef.current.emit('join_room', user._id);
 
-      socketRef.current.on('new_notification', (notification) => {
-        toast(notification.message, { icon: '🔔', duration: 4000 });
-        window.dispatchEvent(new CustomEvent('new_notification', { detail: notification }));
-      });
+
 
       return () => socketRef.current?.disconnect();
     }

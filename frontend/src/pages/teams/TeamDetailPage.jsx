@@ -4,9 +4,10 @@ import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
-import { MdArrowBack, MdPersonAdd, MdDelete, MdSend, MdEmojiEmotions } from 'react-icons/md';
+import { MdArrowBack, MdPersonAdd, MdDelete, MdSend, MdEmojiEmotions, MdAccountTree } from 'react-icons/md';
 import { io } from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
+import TaskWorkflowPage from '../dashboard/TaskWorkflowPage';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
@@ -198,7 +199,7 @@ const TeamDetailPage = () => {
 
       <div className="card">
         <div className="tabs">
-          {['members', 'tasks', 'chats'].map(tab => (
+          {['members', 'tasks', 'chats', 'workflow'].map(tab => (
             <div key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </div>
@@ -339,6 +340,12 @@ const TeamDetailPage = () => {
                 <MdSend /> Send
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'workflow' && (
+          <div style={{ marginTop: '20px' }}>
+            <TaskWorkflowPage teamId={team._id} />
           </div>
         )}
       </div>

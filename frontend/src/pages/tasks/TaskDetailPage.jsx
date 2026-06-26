@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import {
   MdEdit, MdDelete, MdAttachFile,
   MdComment,
-  MdCalendarToday, MdFlag, MdArrowBack
+  MdCalendarToday, MdFlag, MdArrowBack, MdCheck, MdClose
 } from 'react-icons/md';
 
 const TaskDetailPage = () => {
@@ -25,6 +25,9 @@ const TaskDetailPage = () => {
   const [submittingTask, setSubmittingTask] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewingTask, setReviewingTask] = useState(false);
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectReasonInput, setRejectReasonInput] = useState('');
+  const [confirmingTask, setConfirmingTask] = useState(false);
 
   const fetchTask = async () => {
     try {
@@ -60,6 +63,38 @@ const TaskDetailPage = () => {
       toast.success('Progress updated');
     } catch (err) {
       toast.error('Failed to update progress');
+    }
+  };
+
+  const handleAcceptTask = async () => {
+    setConfirmingTask(true);
+    try {
+      await API.put(`/tasks/${id}`, { status: 'in_progress' });
+      setTask(prev => ({ ...prev, status: 'in_progress' }));
+      toast.success('Task accepted and moved to In Progress');
+    } catch (err) {
+      toast.error('Failed to accept task');
+    } finally {
+      setConfirmingTask(false);
+    }
+  };
+
+  const handleRejectTask = async (e) => {
+    e.preventDefault();
+    if (!rejectReasonInput.trim()) {
+      toast.error('Please provide a reason for rejecting the task');
+      return;
+    }
+    setConfirmingTask(true);
+    try {
+      await API.put(`/tasks/${id}`, { status: 'rejected', rejectReason: rejectReasonInput });
+      setTask(prev => ({ ...prev, status: 'rejected', rejectReason: rejectReasonInput }));
+      setShowRejectInput(false);
+      toast.success('Task rejected');
+    } catch (err) {
+      toast.error('Failed to reject task');
+    } finally {
+      setConfirmingTask(false);
     }
   };
 
@@ -157,9 +192,11 @@ const TaskDetailPage = () => {
           {/* <button className={`btn ${tracking ? 'btn-danger' : 'btn-secondary'}`} onClick={handleTimeTracking}>
             {tracking ? <><MdStop /> Stop Timer</> : <><MdPlayArrow /> Start Timer</>}
           </button> */}
-          <button className="btn btn-secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
-            <MdEdit /> {isReadOnlyExceptAssignee ? 'Reassign Task' : 'Edit'}
-          </button>
+          {user.role !== 'user' && (
+            <button className="btn btn-secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
+              <MdEdit /> {isReadOnlyExceptAssignee ? 'Reassign Task' : 'Edit'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -174,20 +211,45 @@ const TaskDetailPage = () => {
             </p>
           </div>
 
-          {/* Status Update */}
-          {(user.role === 'superadmin' || task.assignedBy?._id === user._id) && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div className="card-header"><span className="card-title">Update Status</span></div>
-              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                {['pending','review', 'in_progress', 'completed', 'cancelled'].map(s => (
-                  <button key={s} className={`btn btn-sm ${task.status === s ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => handleStatusChange(s)} disabled={statusUpdating}>
-                    {s.replace('_', ' ')}
+          {/* Working Confirmation Section */}
+          {task.status === 'pending' && task.assignee?._id === user._id && (
+            <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid var(--primary)' }}>
+              <div className="card-header"><span className="card-title">Task Confirmation</span></div>
+              <p style={{ fontSize: 14, marginBottom: 16 }}>You have been assigned this task. Do you accept it?</p>
+              
+              {!showRejectInput ? (
+                <div className="flex gap-2">
+                  <button className="btn btn-sm" style={{ background: 'var(--success)', color: 'white' }} onClick={handleAcceptTask} disabled={confirmingTask}>
+                    <MdCheck /> Accept Task
                   </button>
-                ))}
-              </div>
+                  <button className="btn btn-sm" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => setShowRejectInput(true)} disabled={confirmingTask}>
+                    <MdClose /> Reject Task
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleRejectTask}>
+                  <div className="form-group">
+                    <label className="form-label">Reason for Rejection</label>
+                    <textarea className="form-control" rows={3} placeholder="Please explain why you cannot work on this task..." value={rejectReasonInput} onChange={e => setRejectReasonInput(e.target.value)} autoFocus />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={confirmingTask}>Submit Rejection</button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowRejectInput(false)} disabled={confirmingTask}>Cancel</button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
+
+          {/* Reject Reason Display */}
+          {task.status === 'rejected' && task.rejectReason && (
+            <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid var(--danger)', background: 'rgba(239, 68, 68, 0.05)' }}>
+              <div className="card-header"><span className="card-title" style={{ color: 'var(--danger)' }}>Task Rejected</span></div>
+              <p style={{ fontSize: 14 }}><strong>Reason:</strong> {task.rejectReason}</p>
+            </div>
+          )}
+
+          {/* Status Update Removed per user request */}
 
 
          
@@ -195,7 +257,7 @@ const TaskDetailPage = () => {
           {/* Tabs: Comments | Attachments | Activity | Time */}
           <div className="card">
             <div className="tabs">
-              {['attachments','comments' , 'activity'].map(tab => (
+              {['attachments' , 'activity'].map(tab => (
                 <div key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   {tab === 'comments' && task.comments?.length > 0 && <span className="badge badge-primary" style={{ marginLeft: 6 }}>{task.comments.length}</span>}
@@ -204,7 +266,7 @@ const TaskDetailPage = () => {
             </div>
 
             {/* Comments */}
-            {activeTab === 'comments' && (
+            {/* {activeTab === 'comments' && (
               <div>
                 <form onSubmit={handleAddComment} style={{ marginBottom: 20 }}>
                   <div className="flex gap-2">
@@ -249,7 +311,7 @@ const TaskDetailPage = () => {
                   </div>
                 )}
               </div>
-            )}
+            )} */}
 
             {/* Attachments */}
             {activeTab === 'attachments' && (
@@ -309,19 +371,23 @@ const TaskDetailPage = () => {
             {!task.submission?.isSubmitted ? (
               // Not submitted yet
               (task.assignee?._id === user._id) ? (
-                <form onSubmit={handleSubmitTask}>
-                  <div className="form-group">
-                    <label className="form-label">Submission Notes</label>
-                    <textarea className="form-control" rows={3} placeholder="Describe what you did..." value={submissionNotes} onChange={e => setSubmissionNotes(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Attachments (Optional)</label>
-                    <input type="file" className="form-control" multiple onChange={e => setSubmissionFiles(Array.from(e.target.files))} />
-                  </div>
-                  <button type="submit" className="btn btn-primary" disabled={submittingTask}>
-                    {submittingTask ? 'Submitting...' : 'Submit Task'}
-                  </button>
-                </form>
+                task.status === 'in_progress' ? (
+                  <form onSubmit={handleSubmitTask}>
+                    <div className="form-group">
+                      <label className="form-label">Submission Notes</label>
+                      <textarea className="form-control" rows={3} placeholder="Describe what you did..." value={submissionNotes} onChange={e => setSubmissionNotes(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Attachments (Optional)</label>
+                      <input type="file" className="form-control" multiple onChange={e => setSubmissionFiles(Array.from(e.target.files))} />
+                    </div>
+                    <button type="submit" className="btn btn-primary" disabled={submittingTask}>
+                      {submittingTask ? 'Submitting...' : 'Submit Task'}
+                    </button>
+                  </form>
+                ) : (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Please accept the task to start working on it before submitting.</p>
+                )
               ) : (
                 <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Waiting for the assignee to submit their work.</p>
               )

@@ -170,6 +170,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .status-review { background: rgba(168,85,247,0.12); color: #7e22ce; }
 .status-completed { background: rgba(16,185,129,0.12); color: #065f46; }
 .status-cancelled { background: rgba(100,116,139,0.12); color: var(--text-muted); }
+.status-rejected { background: rgba(239,68,68,0.12); color: #991b1b; }
 
 /* Priority Badges */
 .priority-low { background: rgba(16,185,129,0.12); color: var(--success); }

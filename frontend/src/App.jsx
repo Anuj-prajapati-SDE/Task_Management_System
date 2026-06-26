@@ -27,7 +27,7 @@ import TaskListPage from './pages/tasks/TaskListPage';
 import TaskDetailPage from './pages/tasks/TaskDetailPage';
 import CreateTaskPage from './pages/tasks/CreateTaskPage';
 import EditTaskPage from './pages/tasks/EditTaskPage';
-import KanbanPage from './pages/tasks/KanbanPage';
+
 import CalendarPage from './pages/tasks/CalendarPage';
 
 // User Management
@@ -109,7 +109,6 @@ function AppRoutes() {
         {/* Tasks */}
         <Route path="tasks" element={<TaskListPage />} />
         <Route path="tasks/create" element={<CreateTaskPage />} />
-        {/* <Route path="tasks/kanban" element={<KanbanPage />} /> */}
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="tasks/:id" element={<TaskDetailPage />} />
         <Route path="tasks/:id/edit" element={<EditTaskPage />} />

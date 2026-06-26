@@ -22,6 +22,13 @@ const teamSchema = new mongoose.Schema(
         invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       },
     ],
+    chats: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        message: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      }
+    ],
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

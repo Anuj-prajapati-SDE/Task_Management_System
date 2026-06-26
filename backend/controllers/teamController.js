@@ -22,7 +22,8 @@ exports.getTeamById = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id)
       .populate('owner', 'name avatar email')
-      .populate('members.user', 'name avatar email role department position');
+      .populate('members.user', 'name avatar email role department position')
+      .populate('chats.user', 'name avatar');
     if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
     res.json({ success: true, data: team });
   } catch (err) {
@@ -32,11 +33,22 @@ exports.getTeamById = async (req, res) => {
 
 exports.createTeam = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, members } = req.body;
+    
+    let finalMembers = [];
+    
+    if (members && Array.isArray(members)) {
+      members.forEach(m => {
+        if (m.user) {
+          finalMembers.push({ user: m.user, role: m.role || 'member' });
+        }
+      });
+    }
+
     const team = await Team.create({
       name, description,
       owner: req.user._id,
-      members: [{ user: req.user._id, role: 'leader' }],
+      members: finalMembers,
     });
     res.status(201).json({ success: true, data: team });
   } catch (err) {
@@ -140,6 +152,90 @@ exports.getTeamStats = async (req, res) => {
       overdue: tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed').length,
     };
     res.json({ success: true, data: stats });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.addTeamChat = async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ success: false, message: 'Message is required' });
+
+    let team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    team.chats.push({ user: req.user._id, message, createdAt: new Date() });
+    await team.save();
+
+    // Populate user in the newly added chat
+    team = await Team.findById(team._id).populate('chats.user', 'name avatar');
+    const newChat = team.chats[team.chats.length - 1];
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('new_team_chat', newChat);
+    }
+
+    res.json({ success: true, data: newChat });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.editTeamChat = async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ success: false, message: 'Message is required' });
+
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    const chat = team.chats.id(req.params.chatId);
+    if (!chat) return res.status(404).json({ success: false, message: 'Chat not found' });
+
+    if (chat.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to edit this chat' });
+    }
+
+    chat.message = message;
+    await team.save();
+
+    await team.populate('chats.user', 'name avatar');
+    const updatedChat = team.chats.id(req.params.chatId);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('team_chat_updated', updatedChat);
+    }
+
+    res.json({ success: true, data: updatedChat });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteTeamChat = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    const chat = team.chats.id(req.params.chatId);
+    if (!chat) return res.status(404).json({ success: false, message: 'Chat not found' });
+
+    if (chat.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this chat' });
+    }
+
+    team.chats.pull(req.params.chatId);
+    await team.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('team_chat_deleted', req.params.chatId);
+    }
+
+    res.json({ success: true, message: 'Chat deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

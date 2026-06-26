@@ -43,7 +43,7 @@ const TaskListPage = () => {
     }
   };
 
-  const statusOptions = ['', 'pending', 'in_progress', 'review', 'completed', 'cancelled'];
+  const statusOptions = ['', 'pending', 'in_progress', 'review', 'completed', 'cancelled', 'rejected'];
   const priorityOptions = ['', 'low', 'medium', 'high', 'urgent'];
 
   return (
@@ -161,7 +161,9 @@ const TaskListPage = () => {
                     <td>
                       <div className="flex gap-2">
                         <button className="btn-icon btn btn-ghost btn-sm" onClick={() => navigate(`/tasks/${task._id}`)} title="View"><MdVisibility /></button>
-                        <button className="btn-icon btn btn-ghost btn-sm" onClick={() => navigate(`/tasks/${task._id}/edit`)} title="Edit"><MdEdit /></button>
+                        {user.role !== 'user' && (
+                          <button className="btn-icon btn btn-ghost btn-sm" onClick={() => navigate(`/tasks/${task._id}/edit`)} title="Edit"><MdEdit /></button>
+                        )}
                         {(user.role === 'superadmin' || (user.role === 'admin' && task.assignedBy?.role !== 'superadmin')) &&
                           <button className="btn-icon btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(task)} title="Delete"><MdDelete /></button>}
                       </div>

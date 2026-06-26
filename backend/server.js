@@ -107,6 +107,7 @@ app.use((err, req, res, next) => {
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   socket.on('join_room', (userId) => socket.join(userId));
+  socket.on('join_team', (teamId) => socket.join(teamId));
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 

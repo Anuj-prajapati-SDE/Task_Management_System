@@ -110,8 +110,8 @@ exports.updateTask = async (req, res) => {
       const keysToUpdate = Object.keys(req.body).filter(
         (k) => req.body[k] !== undefined && k !== 'activityHistory' && k !== '$unset'
       );
-      const hasDisallowedChanges = keysToUpdate.some((k) => k !== 'assignee' && k !== 'assigneeReview' && k !== 'assigneeCompleted');
-      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => k !== 'assignee' && k !== 'assigneeReview' && k !== 'assigneeCompleted');
+      const hasDisallowedChanges = keysToUpdate.some((k) => !['assignee', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
+      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => !['assignee', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
 
       if (hasDisallowedChanges || hasDisallowedUnset) {
         return res.status(403).json({
@@ -121,9 +121,23 @@ exports.updateTask = async (req, res) => {
       }
     }
 
+    if (req.user.role === 'user') {
+      const allowedKeys = ['status', 'rejectReason'];
+      const keysToUpdate = Object.keys(req.body).filter(
+        (k) => req.body[k] !== undefined && k !== 'activityHistory' && k !== '$unset'
+      );
+      const hasDisallowedChanges = keysToUpdate.some((k) => !allowedKeys.includes(k));
+      if (hasDisallowedChanges || req.body.$unset) {
+        return res.status(403).json({
+          success: false,
+          message: 'Regular users are not allowed to edit task properties other than status.',
+        });
+      }
+    }
+
     // Track changes
     const changedFields = [];
-    const fields = ['title', 'description', 'status', 'priority', 'assignee', 'dueDate', 'tags', 'assigneeReview', 'assigneeCompleted'];
+    const fields = ['title', 'description', 'status', 'priority', 'assignee', 'dueDate', 'tags', 'assigneeReview', 'assigneeCompleted', 'rejectReason'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined && String(task[field]) !== String(req.body[field])) {
         changedFields.push({ user: req.user._id, action: `updated ${field}`, field, oldValue: task[field], newValue: req.body[field] });
@@ -197,7 +211,7 @@ exports.addComment = async (req, res) => {
     const io = req.app.get('io');
     // Notify mentioned users
     if (mentions && mentions.length > 0) {
-      
+
     }
 
     const populated = await populateTask(Task.findById(task._id));
@@ -376,7 +390,7 @@ exports.submitTask = async (req, res) => {
     });
 
     await task.save();
-    
+
     // Notify Assigner
     if (task.assignedBy && String(task.assignedBy) !== String(req.user._id)) {
 

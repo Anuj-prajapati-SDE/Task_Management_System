@@ -151,13 +151,7 @@ const TaskForm = ({ isEdit = false }) => {
               <textarea className="form-control" rows={4} placeholder="Describe the task..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} disabled={isReadOnly} />
             </div>
             <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Status</label>
-                <select className="form-control" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} disabled={isReadOnly}>
-                  {['pending', 'in_progress', 'review', 'completed', 'cancelled'].map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
+              <div className="form-group" style={{ flex: 1 }}>
                 <label className="form-label">Priority</label>
                 <select className="form-control" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} disabled={isReadOnly}>
                   {['low', 'medium', 'high', 'urgent'].map(p => <option key={p} value={p}>{p}</option>)}

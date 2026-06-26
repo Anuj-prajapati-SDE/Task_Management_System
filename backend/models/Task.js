@@ -57,7 +57,7 @@ const taskSchema = new mongoose.Schema(
     description: { type: String, default: '' },
     status: {
       type: String,
-      enum: ['pending', 'in_progress', 'review', 'completed', 'cancelled'],
+      enum: ['pending', 'in_progress', 'review', 'completed', 'cancelled', 'rejected'],
       default: 'pending',
     },
     priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
@@ -95,6 +95,7 @@ const taskSchema = new mongoose.Schema(
       endDate: Date,
     },
     completedAt: Date,
+    rejectReason: { type: String },
     order: { type: Number, default: 0 },
   },
   { timestamps: true }

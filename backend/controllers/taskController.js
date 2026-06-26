@@ -5,7 +5,7 @@ const { sendEmail, emailTemplates } = require('../utils/email');
 
 const populateTask = (query) =>
   query
-    .populate('assignee', 'name email avatar role')
+    .populate('assignees', 'name email avatar role')
     .populate('assignedBy', 'name avatar role')
     .populate('team', 'name')
     .populate('comments.user', 'name avatar')
@@ -13,19 +13,19 @@ const populateTask = (query) =>
 
 exports.getAllTasks = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, priority, assignee, team, search, sortBy = 'createdAt', sortOrder = 'desc', dueDate } = req.query;
+    const { page = 1, limit = 20, status, priority, assignees, team, search, sortBy = 'createdAt', sortOrder = 'desc', dueDate } = req.query;
     const query = {};
 
     // Role-based filtering
     if (req.user.role === 'user') {
-      query.assignee = req.user._id;
+      query.assignees = req.user._id;
     } else if (req.user.role === 'admin') {
-      query.$or = [{ assignedBy: req.user._id }, { assignee: req.user._id }];
+      query.$or = [{ assignedBy: req.user._id }, { assignees: req.user._id }];
     }
 
     if (status) query.status = status;
     if (priority) query.priority = priority;
-    if (assignee) query.assignee = assignee;
+    if (assignees) query.assignees = assignees;
     if (team) query.team = team;
     if (search) query.$text = { $search: search };
     if (dueDate) {
@@ -55,14 +55,18 @@ exports.getTaskById = async (req, res) => {
 
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, status, priority, assignee, team, dueDate, startDate, tags, labels, dependencies, isRecurring, recurringPattern } = req.body;
+    const { title, description, status, priority, assignees, team, dueDate, startDate, tags, labels, dependencies, isRecurring, recurringPattern } = req.body;
 
     const taskData = {
       title, description, status, priority, dueDate, startDate, tags, labels, dependencies, isRecurring, recurringPattern,
       assignedBy: req.user._id,
     };
 
-    if (assignee && assignee !== '' && assignee !== 'null') taskData.assignee = assignee;
+    let parsedAssignees = assignees;
+    if (typeof assignees === 'string') {
+      try { parsedAssignees = JSON.parse(assignees); } catch (e) { parsedAssignees = []; }
+    }
+    if (parsedAssignees && parsedAssignees.length > 0) taskData.assignees = parsedAssignees;
     if (team && team !== '' && team !== 'null') taskData.team = team;
 
     if (status === 'completed') {
@@ -84,12 +88,15 @@ exports.createTask = async (req, res) => {
 
     const task = await Task.create(taskData);
 
-    // Notify assignee
-    if (assignee && assignee !== req.user._id.toString()) {
-
-      const assigneeUser = await User.findById(assignee);
-      if (assigneeUser?.notificationPreferences?.email) {
-        await sendEmail({ to: assigneeUser.email, subject: 'New Task Assigned', html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) }).catch(() => { });
+    // Notify assignees
+    if (parsedAssignees && parsedAssignees.length > 0) {
+      for (const assigneeId of parsedAssignees) {
+        if (assigneeId !== req.user._id.toString()) {
+          const assigneeUser = await User.findById(assigneeId);
+          if (assigneeUser?.notificationPreferences?.email) {
+            await sendEmail({ to: assigneeUser.email, subject: 'New Task Assigned', html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) }).catch(() => { });
+          }
+        }
       }
     }
 
@@ -110,13 +117,13 @@ exports.updateTask = async (req, res) => {
       const keysToUpdate = Object.keys(req.body).filter(
         (k) => req.body[k] !== undefined && k !== 'activityHistory' && k !== '$unset'
       );
-      const hasDisallowedChanges = keysToUpdate.some((k) => !['assignee', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
-      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => !['assignee', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
+      const hasDisallowedChanges = keysToUpdate.some((k) => !['assignees', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
+      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => !['assignees', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
 
       if (hasDisallowedChanges || hasDisallowedUnset) {
         return res.status(403).json({
           success: false,
-          message: 'Admins can only modify the assignee and assignee progress fields on tasks assigned by a superadmin',
+          message: 'Admins can only modify the assignees and assignee progress fields on tasks assigned by a superadmin',
         });
       }
     }
@@ -137,7 +144,7 @@ exports.updateTask = async (req, res) => {
 
     // Track changes
     const changedFields = [];
-    const fields = ['title', 'description', 'status', 'priority', 'assignee', 'dueDate', 'tags', 'assigneeReview', 'assigneeCompleted', 'rejectReason'];
+    const fields = ['title', 'description', 'status', 'priority', 'assignees', 'dueDate', 'tags', 'assigneeReview', 'assigneeCompleted', 'rejectReason'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined && String(task[field]) !== String(req.body[field])) {
         changedFields.push({ user: req.user._id, action: `updated ${field}`, field, oldValue: task[field], newValue: req.body[field] });
@@ -156,11 +163,13 @@ exports.updateTask = async (req, res) => {
       req.body.$unset.team = 1;
       delete req.body.team;
     }
-    if (req.body.assignee === '' || req.body.assignee === 'null') {
-      req.body.assignee = null;
-      req.body.$unset = req.body.$unset || {};
-      req.body.$unset.assignee = 1;
-      delete req.body.assignee;
+    if (req.body.assignees) {
+      if (typeof req.body.assignees === 'string') {
+        try { req.body.assignees = JSON.parse(req.body.assignees); } catch (e) { req.body.assignees = []; }
+      }
+      if (req.body.assignees.length === 0) {
+        req.body.assignees = [];
+      }
     }
 
     const updateQuery = { ...req.body, $push: { activityHistory: { $each: changedFields } } };
@@ -171,10 +180,8 @@ exports.updateTask = async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    // Notify assignee if changed
-    if (req.body.assignee && req.body.assignee !== task.assignee?.toString()) {
-
-    }
+    // Notify assignees if changed
+    // (Omitted detailed logic for brevity, just keeping placeholder)
 
     const populated = await populateTask(Task.findById(updated._id));
     res.json({ success: true, data: populated });
@@ -309,9 +316,9 @@ exports.updateTaskOrder = async (req, res) => {
 exports.getKanbanTasks = async (req, res) => {
   try {
     const query = req.user.role === 'user'
-      ? { assignee: req.user._id }
+      ? { assignees: req.user._id }
       : req.user.role === 'admin'
-        ? { $or: [{ assignedBy: req.user._id }, { assignee: req.user._id }] }
+        ? { $or: [{ assignedBy: req.user._id }, { assignees: req.user._id }] }
         : {};
     if (req.query.team) query.team = req.query.team;
 
@@ -336,9 +343,9 @@ exports.getCalendarTasks = async (req, res) => {
       dueDate: { $gte: new Date(startDate), $lte: new Date(endDate) },
     };
     if (req.user.role === 'user') {
-      query.assignee = req.user._id;
+      query.assignees = req.user._id;
     } else if (req.user.role === 'admin') {
-      query.$or = [{ assignedBy: req.user._id }, { assignee: req.user._id }];
+      query.$or = [{ assignedBy: req.user._id }, { assignees: req.user._id }];
     }
 
     const tasks = await populateTask(Task.find(query));
@@ -353,9 +360,9 @@ exports.submitTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
 
-    // Only assignee can submit
-    if (String(task.assignee) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Only the assignee can submit the task' });
+    // Only an assignee can submit
+    if (!task.assignees.some(id => String(id) === String(req.user._id))) {
+      return res.status(403).json({ success: false, message: 'Only an assignee can submit the task' });
     }
 
     const { notes } = req.body;
@@ -448,8 +455,8 @@ exports.reviewSubmission = async (req, res) => {
 
     await task.save();
 
-    // Notify Assignee
-    if (task.assignee) {
+    // Notify Assignees
+    if (task.assignees && task.assignees.length > 0) {
 
     }
 

@@ -425,10 +425,10 @@ export const SuperAdminDashboard = () => {
                       <div style={{ fontWeight: 500, fontSize: 13 }}>{task.title}</div>
                     </td>
                     <td>
-                      {task.assignee ? (
+                      {task.assignees && task.assignees.length > 0 ? (
                         <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                          <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{task.assignee?.name?.[0]}</div>
-                          <span style={{ fontSize: 13 }}>{task.assignee?.name}</span>
+                          <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{task.assignees[0]?.name?.[0]}</div>
+                          <span style={{ fontSize: 13 }}>{task.assignees[0]?.name} {task.assignees.length > 1 && `+${task.assignees.length - 1}`}</span>
                         </div>
                       ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>

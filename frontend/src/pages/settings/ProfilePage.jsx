@@ -80,36 +80,15 @@ export const ProfilePage = () => {
 // ===== ACCOUNT SETTINGS =====
 export const AccountSettingsPage = () => {
   const { user, updateUser } = useAuth();
-  const [theme, setTheme] = useState(user?.theme || 'light');
   const [loading, setLoading] = useState(false);
 
-  const handleThemeChange = async (newTheme) => {
-    setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-    try {
-      const { data } = await API.put('/users/profile', { theme: newTheme });
-      updateUser(data.data);
-      toast.success('Theme updated');
-    } catch {}
-  };
 
   return (
     <div>
       <div className="page-header"><h1>Account Settings</h1></div>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <div className="card">
-          <div className="card-header"><span className="card-title">Appearance</span></div>
-          <div className="flex gap-3">
-            {['light', 'dark'].map(t => (
-              <div key={t} onClick={() => handleThemeChange(t)}
-                style={{ flex: 1, padding: 16, border: `2px solid ${theme === t ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--radius-lg)', cursor: 'pointer', textAlign: 'center', transition: 'border-color 0.2s' }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>{t === 'light' ? '☀️' : '🌙'}</div>
-                <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{t} Mode</div>
-              </div>
-            ))}
-          </div>
 
-          <div className="divider" />
           <div className="card-header"><span className="card-title">Account Info</span></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[

@@ -99,10 +99,10 @@ const LoginPage = () => {
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <div className="input-wrapper">
-                <MdEmail className="input-icon" />
+                {/* <MdEmail className="input-icon" /> */}
                 <input
                   className="form-control"
-                  type="email"
+                  type="email" 
                   placeholder="name@company.com"
                   value={form.email}
                   onChange={(e) =>
@@ -117,7 +117,7 @@ const LoginPage = () => {
             <div className="form-group">
               <label className="form-label">Password</label>
               <div className="input-wrapper">
-                <MdLock className="input-icon" />
+                {/* <MdLock className="input-icon" /> */}
                 <input
                   className="form-control"
                   style={{ paddingRight: '48px' }}

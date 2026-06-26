@@ -9,14 +9,14 @@ exports.getUserDashboard = async (req, res) => {
     const weekAgo = new Date(now - 7 * 24 * 3600000);
 
     const [total, completed, pending, inProgress, overdue, recentTasks, upcomingDeadlines] = await Promise.all([
-      Task.countDocuments({ assignee: userId }),
-      Task.countDocuments({ assignee: userId, status: 'completed' }),
-      Task.countDocuments({ assignee: userId, status: 'pending' }),
-      Task.countDocuments({ assignee: userId, status: 'in_progress' }),
-      Task.countDocuments({ assignee: userId, dueDate: { $lt: now }, status: { $nin: ['completed', 'cancelled'] } }),
-      Task.find({ assignee: userId, updatedAt: { $gte: weekAgo } })
+      Task.countDocuments({ assignees: userId }),
+      Task.countDocuments({ assignees: userId, status: 'completed' }),
+      Task.countDocuments({ assignees: userId, status: 'pending' }),
+      Task.countDocuments({ assignees: userId, status: 'in_progress' }),
+      Task.countDocuments({ assignees: userId, dueDate: { $lt: now }, status: { $nin: ['completed', 'cancelled'] } }),
+      Task.find({ assignees: userId, updatedAt: { $gte: weekAgo } })
         .sort({ updatedAt: -1 }).limit(5).select('title status priority updatedAt'),
-      Task.find({ assignee: userId, dueDate: { $gte: now }, status: { $nin: ['completed', 'cancelled'] } })
+      Task.find({ assignees: userId, dueDate: { $gte: now }, status: { $nin: ['completed', 'cancelled'] } })
         .sort({ dueDate: 1 }).limit(5).select('title dueDate priority status'),
     ]);
 
@@ -27,7 +27,7 @@ exports.getUserDashboard = async (req, res) => {
       day.setDate(day.getDate() - i);
       const dayStart = new Date(day.setHours(0, 0, 0, 0));
       const dayEnd = new Date(day.setHours(23, 59, 59, 999));
-      const count = await Task.countDocuments({ assignee: userId, status: 'completed', completedAt: { $gte: dayStart, $lte: dayEnd } });
+      const count = await Task.countDocuments({ assignees: userId, status: 'completed', completedAt: { $gte: dayStart, $lte: dayEnd } });
       weeklyData.push({ date: dayStart.toISOString().split('T')[0], completed: count });
     }
 
@@ -73,7 +73,8 @@ exports.getAdminDashboard = async (req, res) => {
 
     const topPerformers = await Task.aggregate([
       { $match: performerMatch },
-      { $group: { _id: '$assignee', count: { $sum: 1 } } },
+      { $unwind: '$assignees' },
+      { $group: { _id: '$assignees', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 5 },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
@@ -128,7 +129,7 @@ exports.getSuperAdminDashboard = async (req, res) => {
         { 'submission.isSubmitted': true, 'submission.status': 'pending' },
         { status: 'review' }
       ]
-    }).select('title assignee dueDate submission createdAt').populate('assignee', 'name email avatar').limit(10).sort({ 'submission.submittedAt': -1, updatedAt: -1 });
+    }).select('title assignees dueDate submission createdAt').populate('assignees', 'name email avatar').limit(10).sort({ 'submission.submittedAt': -1, updatedAt: -1 });
 
     res.json({ success: true, data: { stats: { totalUsers, totalTasks, totalTeams }, usersByRole, recentUsers, pendingSubmissions } });
   } catch (err) {
@@ -139,16 +140,18 @@ exports.getSuperAdminDashboard = async (req, res) => {
 exports.getTeamAnalytics = async (req, res) => {
   try {
     const { teamId } = req.params;
-    const tasks = await Task.find({ team: teamId }).populate('assignee', 'name avatar');
+    const tasks = await Task.find({ team: teamId }).populate('assignees', 'name avatar');
     const memberStats = {};
     tasks.forEach(task => {
-      if (task.assignee) {
-        const uid = task.assignee._id.toString();
-        if (!memberStats[uid]) memberStats[uid] = { user: task.assignee, total: 0, completed: 0, pending: 0, inProgress: 0 };
-        memberStats[uid].total++;
-        if (task.status === 'completed') memberStats[uid].completed++;
-        else if (task.status === 'pending') memberStats[uid].pending++;
-        else if (task.status === 'in_progress') memberStats[uid].inProgress++;
+      if (task.assignees && task.assignees.length > 0) {
+        task.assignees.forEach(assignee => {
+          const uid = assignee._id.toString();
+          if (!memberStats[uid]) memberStats[uid] = { user: assignee, total: 0, completed: 0, pending: 0, inProgress: 0 };
+          memberStats[uid].total++;
+          if (task.status === 'completed') memberStats[uid].completed++;
+          else if (task.status === 'pending') memberStats[uid].pending++;
+          else if (task.status === 'in_progress') memberStats[uid].inProgress++;
+        });
       }
     });
 
@@ -162,12 +165,12 @@ exports.getProductivityReport = async (req, res) => {
   try {
     const { startDate, endDate, userId } = req.query;
     const query = { status: 'completed', completedAt: { $gte: new Date(startDate), $lte: new Date(endDate) } };
-    if (userId) query.assignee = userId;
-    else if (req.user.role === 'user') query.assignee = req.user._id;
+    if (userId) query.assignees = userId;
+    else if (req.user.role === 'user') query.assignees = req.user._id;
 
     const tasks = await Task.find(query)
-      .populate('assignee', 'name avatar')
-      .select('title priority completedAt totalTimeSpent assignee');
+      .populate('assignees', 'name avatar')
+      .select('title priority completedAt totalTimeSpent assignees');
 
     const totalTime = tasks.reduce((sum, t) => sum + (t.totalTimeSpent || 0), 0);
     res.json({ success: true, data: { tasks, totalCompleted: tasks.length, totalTimeSpent: totalTime } });

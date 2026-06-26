@@ -91,8 +91,8 @@ exports.toggleUserStatus = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, department, position, phone, theme } = req.body;
-    const updateData = { name, department, position, phone, theme };
+    const { name, department, position, phone } = req.body;
+    const updateData = { name, department, position, phone };
     if (req.file) updateData.avatar = `/uploads/${req.file.filename}`;
 
     const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true, runValidators: true });

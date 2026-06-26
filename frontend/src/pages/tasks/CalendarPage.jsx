@@ -5,8 +5,10 @@ import 'react-calendar/dist/Calendar.css';
 import API from '../../utils/api';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { MdAdd, MdFlag } from 'react-icons/md';
+import { useAuth } from '../../context/AuthContext';
 
 const CalendarPage = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [date, setDate] = useState(new Date());
   const [tasks, setTasks] = useState([]);
@@ -60,7 +62,9 @@ const CalendarPage = () => {
     <div>
       <div className="page-header">
         <div><h1>Calendar</h1><p>View your tasks by due date.</p></div>
-        <button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> New Task</button>
+        {user.role !== 'user' && (
+          <button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> New Task</button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
@@ -99,9 +103,7 @@ const CalendarPage = () => {
             ) : selectedDateTasks.length === 0 ? (
               <div className="empty-state" style={{ padding: '24px 0' }}>
                 <p style={{ fontSize: 13 }}>No tasks due on this date.</p>
-                <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => navigate('/tasks/create')}>
-                  <MdAdd /> Add Task
-                </button>
+                
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

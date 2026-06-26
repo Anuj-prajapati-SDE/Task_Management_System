@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import API from '../../utils/api';
-import { LuSun, LuMoon } from "react-icons/lu";
 import {
-  MdDashboard, MdAssignment, MdViewKanban, MdCalendarMonth,
-  MdPeople, MdGroup, MdBarChart, MdNotifications, MdSettings,
-  MdSecurity, MdHistory, MdSearch, MdMenu,
+  MdDashboard, MdAssignment, MdCalendarMonth,
+  MdPeople, MdGroup, MdBarChart,
+  MdSecurity, MdMenu,
   MdLogout, MdClose, MdTask
 } from 'react-icons/md';
 import './DashboardLayout.css';
@@ -15,26 +13,16 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState(user?.theme || 'light');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
  
   const navItems = [
     { icon: <MdDashboard />, label: 'Dashboard', to: '/dashboard', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdAssignment />, label: 'My Tasks', to: '/tasks', roles: ['user', 'admin', 'superadmin'] },
-    // { icon: <MdViewKanban />, label: 'Kanban Board', to: '/tasks/kanban', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdCalendarMonth />, label: 'Calendar', to: '/calendar', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdGroup />, label: 'Teams', to: '/teams', roles: ['user', 'admin', 'superadmin'] },
-
-    // { divider: true, label: 'Administration', roles: ['admin', 'superadmin'] },
     { icon: <MdPeople />, label: 'Users', to: '/users', roles: ['admin', 'superadmin'] },
     { icon: <MdBarChart />, label: 'Reports', to: '/reports', roles: ['admin', 'superadmin'] },
-    // { divider: true, label: 'Super Admin', roles: ['superadmin'] },
-    // { icon: <MdHistory />, label: 'Audit Logs', to: '/audit-logs', roles: ['superadmin'] },
     { icon: <MdSecurity />, label: 'System Settings', to: '/system-settings', roles: ['superadmin'] },
   ];
 
@@ -105,10 +93,6 @@ const DashboardLayout = () => {
 
 
           <div className="topbar-actions">
-            <button className="topbar-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-              {theme === 'light' ? <LuMoon /> : <LuSun />}
-            </button>
-
 
             {/* Standardized Avatar Trigger */}
             <div className="topbar-user-trigger" onClick={() => navigate('/settings/profile')}>

@@ -26,7 +26,6 @@ const userSchema = new mongoose.Schema(
     position: { type: String, default: '' },
     phone: { type: String, default: '' },
 
-    theme: { type: String, enum: ['light', 'dark'], default: 'light' },
   },
   { timestamps: true }
 );

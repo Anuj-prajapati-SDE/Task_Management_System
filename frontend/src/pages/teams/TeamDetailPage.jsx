@@ -28,17 +28,30 @@ const TeamDetailPage = () => {
 
   const fetchData = async () => {
     try {
-      const [teamRes, statsRes, usersRes, tasksRes] = await Promise.all([
+      const reqs = [
         API.get(`/teams/${id}`),
         API.get(`/teams/${id}/stats`),
-        API.get('/users'),
         API.get('/tasks', { params: { team: id } }),
-      ]);
-      setTeam(teamRes.data.data);
-      setStats(statsRes.data.data);
-      setUsers(usersRes.data.data);
-      setTeamTasks(tasksRes.data.data);
-    } catch { navigate('/teams'); }
+      ];
+      
+      if (user.role !== 'user') {
+        reqs.push(API.get('/users'));
+      }
+
+      const results = await Promise.all(reqs);
+      
+      setTeam(results[0].data.data);
+      setStats(results[1].data.data);
+      setTeamTasks(results[2].data.data);
+      
+      if (user.role !== 'user') {
+        setUsers(results[3].data.data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load team details');
+      navigate('/teams');
+    }
     finally { setLoading(false); }
   };
 

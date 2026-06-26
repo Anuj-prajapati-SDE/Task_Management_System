@@ -61,7 +61,7 @@ const taskSchema = new mongoose.Schema(
       default: 'pending',
     },
     priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
-    assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
     dueDate: { type: Date },
@@ -101,7 +101,7 @@ const taskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-taskSchema.index({ assignee: 1, status: 1 });
+taskSchema.index({ assignees: 1, status: 1 });
 taskSchema.index({ team: 1, status: 1 });
 taskSchema.index({ dueDate: 1 });
 taskSchema.index({ title: 'text', description: 'text', tags: 'text' });

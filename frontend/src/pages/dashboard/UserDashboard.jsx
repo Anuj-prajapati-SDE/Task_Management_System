@@ -118,8 +118,7 @@ const UserDashboard = () => {
           <div className="empty-state">
             <div className="empty-icon">📋</div>
             <h3>No tasks yet</h3>
-            <p>Create your first task to get started!</p>
-            <button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> Create Task</button>
+            <p>You have no assigned tasks yet.</p>
           </div>
         ) : (
           <div className="table-wrapper">

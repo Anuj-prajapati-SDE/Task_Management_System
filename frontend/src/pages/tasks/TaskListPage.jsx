@@ -97,10 +97,11 @@ const TaskListPage = () => {
           <div style={{ padding: 20 }}>{[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 50, marginBottom: 8 }} />)}</div>
         ) : tasks.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📋</div>
             <h3>No tasks found</h3>
-            <p>Create a new task to get started.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> Create Task</button>
+            <p>{user.role !== 'user' ? 'Create a new task to get started.' : 'You have no assigned tasks.'}</p>
+            {user.role !== 'user' && (
+              <button className="btn btn-primary" onClick={() => navigate('/tasks/create')}><MdAdd /> Create Task</button>
+            )}
           </div>
         ) : (
           <div className="table-wrapper">
@@ -128,10 +129,17 @@ const TaskListPage = () => {
                     <td><span className={`badge status-${task.status}`}>{task.status.replace('_', ' ')}</span></td>
                     <td><span className={`badge priority-${task.priority}`}>{task.priority}</span></td>
                     <td>
-                      {task.assignee ? (
-                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                          <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{task.assignee.name?.[0]}</div>
-                          <span style={{ fontSize: 12 }}>{task.assignee.name}</span>
+                      {task.assignees && task.assignees.length > 0 ? (
+                        <div className="flex gap-2" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                          {task.assignees.slice(0, 3).map((assignee, index) => (
+                            <div key={index} className="flex gap-2" style={{ alignItems: 'center' }}>
+                              <div className="avatar avatar-sm" style={{ background: '#4f46e5', title: assignee.name }}>{assignee.name?.[0]}</div>
+                              <span style={{ fontSize: 12 }}>{assignee.name}</span>
+                            </div>
+                          ))}
+                          {task.assignees.length > 3 && (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>+{task.assignees.length - 3} more</span>
+                          )}
                         </div>
                       ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Unassigned</span>}
                     </td>

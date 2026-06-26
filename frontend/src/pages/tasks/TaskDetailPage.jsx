@@ -212,7 +212,7 @@ const TaskDetailPage = () => {
           </div>
 
           {/* Working Confirmation Section */}
-          {task.status === 'pending' && task.assignee?._id === user._id && (
+          {task.status === 'pending' && task.assignees?.some(a => a._id === user._id) && (
             <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid var(--primary)' }}>
               <div className="card-header"><span className="card-title">Task Confirmation</span></div>
               <p style={{ fontSize: 14, marginBottom: 16 }}>You have been assigned this task. Do you accept it?</p>
@@ -370,7 +370,7 @@ const TaskDetailPage = () => {
             <div className="card-header"><span className="card-title">Task Submission</span></div>
             {!task.submission?.isSubmitted ? (
               // Not submitted yet
-              (task.assignee?._id === user._id) ? (
+              (task.assignees?.some(a => a._id === user._id)) ? (
                 task.status === 'in_progress' ? (
                   <form onSubmit={handleSubmitTask}>
                     <div className="form-group">
@@ -446,14 +446,18 @@ const TaskDetailPage = () => {
             <div className="card-header"><span className="card-title">Details</span></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Assignee</div>
-                {task.assignee ? (
-                  <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                    <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{getInitials(task.assignee.name)}</div>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{task.assignee.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{task.assignee.email}</div>
-                    </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Assignees</div>
+                {task.assignees && task.assignees.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {task.assignees.map(assignee => (
+                      <div key={assignee._id} className="flex gap-2" style={{ alignItems: 'center' }}>
+                        <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{getInitials(assignee.name)}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{assignee.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{assignee.email}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unassigned</span>}
               </div>

@@ -546,10 +546,10 @@ const SuperAdminDashboard = () => {
                           <div style={{ fontWeight: 500, fontSize: 13 }}>{task.title}</div>
                         </td>
                         <td>
-                          {task.assignee ? (
+                          {task.assignees && task.assignees.length > 0 ? (
                             <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                              <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{task.assignee?.name?.[0]}</div>
-                              <span style={{ fontSize: 13 }}>{task.assignee?.name}</span>
+                              <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>{task.assignees[0]?.name?.[0]}</div>
+                              <span style={{ fontSize: 13 }}>{task.assignees[0]?.name} {task.assignees.length > 1 && `+${task.assignees.length - 1}`}</span>
                             </div>
                           ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                         </td>
@@ -589,10 +589,10 @@ const SuperAdminDashboard = () => {
                       <td><span className={`badge status-${task.status}`}>{task.status.replace('_', ' ')}</span></td>
                       <td><span className={`badge priority-${task.priority}`}>{task.priority}</span></td>
                       <td>
-                        {task.assignee
+                        {task.assignees && task.assignees.length > 0
                           ? <div className="flex gap-1" style={{ alignItems: 'center' }}>
-                              <div className="avatar avatar-sm" style={{ background: '#4f46e5', width: 22, height: 22, fontSize: 10 }}>{task.assignee.name?.[0]}</div>
-                              <span style={{ fontSize: 12 }}>{task.assignee.name}</span>
+                              <div className="avatar avatar-sm" style={{ background: '#4f46e5', width: 22, height: 22, fontSize: 10 }}>{task.assignees[0]?.name?.[0]}</div>
+                              <span style={{ fontSize: 12 }}>{task.assignees[0]?.name} {task.assignees.length > 1 && `+${task.assignees.length - 1}`}</span>
                             </div>
                           : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Unassigned</span>}
                       </td>

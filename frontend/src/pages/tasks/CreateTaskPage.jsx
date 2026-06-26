@@ -25,7 +25,7 @@ const TaskForm = ({ isEdit = false }) => {
   const [taskAssignedByRole, setTaskAssignedByRole] = useState(null);
   const [form, setForm] = useState({
     title: '', description: '', status: 'pending', priority: 'medium',
-    assignee: '', team: '', dueDate: '', startDate: '', tags: [], labels: [],
+    assignees: [], team: '', dueDate: '', startDate: '', tags: [], labels: [],
     isRecurring: false, recurringPattern: { frequency: 'weekly', interval: 1 },
   });
 
@@ -45,7 +45,7 @@ const TaskForm = ({ isEdit = false }) => {
         setTaskAssignedByRole(t.assignedBy?.role || null);
         setForm({
           title: t.title, description: t.description, status: t.status, priority: t.priority,
-          assignee: t.assignee?._id || '', team: t.team?._id || '',
+          assignees: t.assignees ? t.assignees.map(a => a._id || a) : [], team: t.team?._id || '',
           dueDate: t.dueDate ? formatDateTimeLocal(t.dueDate) : '',
           startDate: t.startDate ? formatDateTimeLocal(t.startDate) : '',
           tags: t.tags || [], labels: t.labels || [],
@@ -61,7 +61,7 @@ const TaskForm = ({ isEdit = false }) => {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => {
-        if (v === '' && (k === 'team' || k === 'assignee')) {
+        if (v === '' && k === 'team') {
           // don't append empty string for ObjectId fields to avoid Cast error
         } else if (Array.isArray(v)) {
           formData.append(k, JSON.stringify(v));
@@ -102,7 +102,7 @@ const TaskForm = ({ isEdit = false }) => {
 
   const isReadOnly = isEdit && user.role === 'admin' && taskAssignedByRole === 'superadmin';
 
-  const filteredUsers = users.filter((u) => {
+  let filteredUsers = users.filter((u) => {
     if (user.role === "superadmin") {
       return u.role === "admin" || u.role === "user";
     }
@@ -114,6 +114,14 @@ const TaskForm = ({ isEdit = false }) => {
 
     return false;
   });
+
+  if (form.team) {
+    const selectedTeam = teams.find(t => t._id === form.team);
+    if (selectedTeam && selectedTeam.members) {
+      const memberIds = selectedTeam.members.map(m => m.user?._id || m.user);
+      filteredUsers = filteredUsers.filter(u => memberIds.includes(u._id));
+    }
+  }
 
   return (
     <div>
@@ -175,20 +183,47 @@ const TaskForm = ({ isEdit = false }) => {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Assignee</label>
-                <select
-                  className="form-control"
-                  value={form.assignee}
-                  onChange={(e) =>
-                    setForm({ ...form, assignee: e.target.value })
-                  }>
-                  <option value="">Unassigned</option>
-
-                  {filteredUsers.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} ({u.email})
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '6px', background: 'var(--bg)' }}>
+                  {filteredUsers.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 12, textAlign: 'center' }}>No users available for this team</div>}
+                  {filteredUsers.map((u) => {
+                    const isSelected = form.assignees.includes(u._id);
+                    return (
+                      <div 
+                        key={u._id} 
+                        onClick={() => {
+                          if (isReadOnly) return;
+                          if (isSelected) {
+                            setForm({ ...form, assignees: form.assignees.filter(id => id !== u._id) });
+                          } else {
+                            setForm({ ...form, assignees: [...form.assignees, u._id] });
+                          }
+                        }}
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 12, 
+                          padding: '8px 12px', 
+                          cursor: isReadOnly ? 'default' : 'pointer', 
+                          opacity: isReadOnly ? 0.6 : 1, 
+                          borderRadius: '6px',
+                          background: isSelected ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => !isSelected && !isReadOnly && (e.currentTarget.style.background = 'var(--bg-hover)')}
+                        onMouseLeave={(e) => !isSelected && !isReadOnly && (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div className="avatar avatar-sm" style={{ background: isSelected ? 'var(--primary)' : '#9ca3af', width: 32, height: 32, fontSize: 13, flexShrink: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {u.name?.[0]?.toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: 14, fontWeight: isSelected ? 600 : 500, color: isSelected ? 'var(--primary)' : 'var(--text)' }}>{u.name}</span>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email}</span>
+                        </div>
+                        {isSelected && <div style={{ color: 'var(--primary)', fontSize: 18, fontWeight: 'bold' }}>✓</div>}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Team (Optional)</label>

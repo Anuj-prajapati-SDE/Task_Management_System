@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
-import toast from 'react-hot-toast';
-
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {

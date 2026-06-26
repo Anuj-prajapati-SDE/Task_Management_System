@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 
 const { sendEmail, emailTemplates } = require('../utils/email');
+const { createNotification } = require('./notificationController');
 
 const populateTask = (query) =>
   query
@@ -9,6 +10,7 @@ const populateTask = (query) =>
     .populate('assignedBy', 'name avatar role')
     .populate('team', 'name')
     .populate('comments.user', 'name avatar')
+    .populate('chats.user', 'name avatar')
     .populate('subtasks.assignee', 'name avatar');
 
 exports.getAllTasks = async (req, res) => {
@@ -62,12 +64,24 @@ exports.createTask = async (req, res) => {
       assignedBy: req.user._id,
     };
 
-    let parsedAssignees = assignees;
-    if (typeof assignees === 'string') {
-      try { parsedAssignees = JSON.parse(assignees); } catch (e) { parsedAssignees = []; }
-    }
-    if (parsedAssignees && parsedAssignees.length > 0) taskData.assignees = parsedAssignees;
+    const parseField = (field) => {
+      if (typeof field === 'string') {
+        try { return JSON.parse(field); } catch (e) { return field; }
+      }
+      return field;
+    };
+
+    let parsedAssignees = assignees ? parseField(assignees) : [];
+    if (!Array.isArray(parsedAssignees)) parsedAssignees = [parsedAssignees].filter(Boolean);
+    
+    if (parsedAssignees.length > 0) taskData.assignees = parsedAssignees;
     if (team && team !== '' && team !== 'null') taskData.team = team;
+    
+    if (tags) taskData.tags = parseField(tags);
+    if (labels) taskData.labels = parseField(labels);
+    if (dependencies) taskData.dependencies = parseField(dependencies);
+    if (isRecurring !== undefined) taskData.isRecurring = parseField(isRecurring);
+    if (recurringPattern) taskData.recurringPattern = parseField(recurringPattern);
 
     if (status === 'completed') {
       taskData.completedAt = new Date();
@@ -96,6 +110,13 @@ exports.createTask = async (req, res) => {
           if (assigneeUser?.notificationPreferences?.email) {
             await sendEmail({ to: assigneeUser.email, subject: 'New Task Assigned', html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) }).catch(() => { });
           }
+          await createNotification(req.app.get('io'), {
+            user: assigneeId,
+            title: 'New Task Assigned',
+            message: `You have been assigned to task: ${title}`,
+            type: 'task_assigned',
+            link: `/tasks/${task._id}`
+          });
         }
       }
     }
@@ -163,16 +184,36 @@ exports.updateTask = async (req, res) => {
       req.body.$unset.team = 1;
       delete req.body.team;
     }
-    if (req.body.assignees) {
-      if (typeof req.body.assignees === 'string') {
-        try { req.body.assignees = JSON.parse(req.body.assignees); } catch (e) { req.body.assignees = []; }
+    const parseField = (field) => {
+      if (typeof field === 'string') {
+        try { return JSON.parse(field); } catch (e) { return field; }
       }
-      if (req.body.assignees.length === 0) {
-        req.body.assignees = [];
+      return field;
+    };
+
+    ['assignees', 'tags', 'labels', 'dependencies', 'recurringPattern', 'isRecurring'].forEach(key => {
+      if (req.body[key] !== undefined) {
+        req.body[key] = parseField(req.body[key]);
       }
+    });
+
+    if (req.body.assignees && !Array.isArray(req.body.assignees)) {
+      req.body.assignees = [req.body.assignees].filter(Boolean);
     }
 
     const updateQuery = { ...req.body, $push: { activityHistory: { $each: changedFields } } };
+
+    if (req.files && req.files.length > 0) {
+      const newAttachments = req.files.map((f) => ({
+        filename: f.filename,
+        originalName: f.originalname,
+        mimetype: f.mimetype,
+        size: f.size,
+        path: `/uploads/${f.filename}`,
+        uploadedBy: req.user._id,
+      }));
+      updateQuery.$push.attachments = { $each: newAttachments };
+    }
 
     const updated = await Task.findByIdAndUpdate(
       req.params.id,
@@ -181,7 +222,19 @@ exports.updateTask = async (req, res) => {
     );
 
     // Notify assignees if changed
-    // (Omitted detailed logic for brevity, just keeping placeholder)
+    if (req.body.assignees && req.body.assignees.length > 0) {
+      for (const assigneeId of req.body.assignees) {
+        if (!task.assignees.some(a => a.toString() === assigneeId) && assigneeId !== req.user._id.toString()) {
+          await createNotification(req.app.get('io'), {
+            user: assigneeId,
+            title: 'New Task Assigned',
+            message: `You have been assigned to task: ${updated.title}`,
+            type: 'task_assigned',
+            link: `/tasks/${updated._id}`
+          });
+        }
+      }
+    }
 
     const populated = await populateTask(Task.findById(updated._id));
     res.json({ success: true, data: populated });
@@ -462,6 +515,100 @@ exports.reviewSubmission = async (req, res) => {
 
     const updatedTask = await populateTask(Task.findById(task._id));
     res.json({ success: true, data: updatedTask });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Chats
+exports.addTaskChat = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+    
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ success: false, message: 'Message is required' });
+
+    const newChat = { user: req.user._id, message };
+    task.chats.push(newChat);
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id).populate('chats.user', 'name avatar');
+    const populatedChat = updatedTask.chats[updatedTask.chats.length - 1];
+
+    if (req.app.get('io')) {
+      req.app.get('io').to(task._id.toString()).emit('new_task_chat', populatedChat);
+    }
+
+    // Notify other assignees
+    if (task.assignees && task.assignees.length > 0) {
+      for (const assigneeId of task.assignees) {
+        if (assigneeId.toString() !== req.user._id.toString()) {
+          await createNotification(req.app.get('io'), {
+            user: assigneeId,
+            title: 'New Chat Message',
+            message: `New message in task: ${task.title}`,
+            type: 'chat_message',
+            link: `/tasks/${task._id}`
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, data: populatedChat });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateTaskChat = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+
+    const chat = task.chats.id(req.params.chatId);
+    if (!chat) return res.status(404).json({ success: false, message: 'Chat not found' });
+
+    if (chat.user.toString() !== req.user._id.toString() && req.user.role === 'user') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    chat.message = req.body.message || chat.message;
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id).populate('chats.user', 'name avatar');
+    const populatedChat = updatedTask.chats.id(req.params.chatId);
+
+    if (req.app.get('io')) {
+      req.app.get('io').to(task._id.toString()).emit('task_chat_updated', populatedChat);
+    }
+
+    res.json({ success: true, data: populatedChat });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteTaskChat = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+
+    const chat = task.chats.id(req.params.chatId);
+    if (!chat) return res.status(404).json({ success: false, message: 'Chat not found' });
+
+    if (chat.user.toString() !== req.user._id.toString() && req.user.role === 'user') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    task.chats.pull(req.params.chatId);
+    await task.save();
+
+    if (req.app.get('io')) {
+      req.app.get('io').to(task._id.toString()).emit('task_chat_deleted', req.params.chatId);
+    }
+
+    res.json({ success: true, data: {} });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

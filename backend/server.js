@@ -87,6 +87,7 @@ app.use('/api/teams', require('./routes/teamRoutes'));
 
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/audit', require('./routes/auditRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -108,6 +109,7 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   socket.on('join_room', (userId) => socket.join(userId));
   socket.on('join_team', (teamId) => socket.join(teamId));
+  socket.on('join_task', (taskId) => socket.join(taskId));
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 
@@ -124,3 +126,5 @@ mongoose
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
+
+// Triggering restart

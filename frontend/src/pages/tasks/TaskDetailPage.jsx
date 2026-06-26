@@ -5,10 +5,12 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
-  MdEdit, MdDelete, MdAttachFile,
-  MdComment,
-  MdCalendarToday, MdFlag, MdArrowBack, MdCheck, MdClose
+  MdEdit, MdAttachFile,
+  MdCalendarToday, MdFlag, MdArrowBack, MdCheck, MdClose,
+  MdSend, MdEmojiEmotions
 } from 'react-icons/md';
+import { io } from 'socket.io-client';
+import EmojiPicker from 'emoji-picker-react';
 
 const TaskDetailPage = () => {
   const { id } = useParams();
@@ -16,10 +18,15 @@ const TaskDetailPage = () => {
   const { user } = useAuth();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('attachments');
-  const [comment, setComment] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [activeTab, setActiveTab] = useState('chats');
+  const [chatInput, setChatInput] = useState('');
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editChatInput, setEditChatInput] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const chatEndRef = React.useRef(null);
+  // const [comment, setComment] = useState('');
+  // const [submittingComment, setSubmittingComment] = useState(false);
+  // const [statusUpdating, setStatusUpdating] = useState(false);
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [submittingTask, setSubmittingTask] = useState(false);
@@ -40,31 +47,93 @@ const TaskDetailPage = () => {
 
   useEffect(() => { fetchTask(); }, [id]);
 
-  const handleStatusChange = async (status) => {
-    if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
-      toast.error('Admins cannot update status on tasks assigned by a superadmin');
-      return;
+  useEffect(() => {
+    const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000');
+    socket.emit('join_task', id);
+
+    socket.on('new_task_chat', (newChat) => {
+      setTask((prev) => {
+        if (!prev) return prev;
+        const exists = prev.chats?.find(c => c._id === newChat._id);
+        if (exists) return prev;
+        return { ...prev, chats: [...(prev.chats || []), newChat] };
+      });
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    });
+
+    socket.on('task_chat_updated', (updatedChat) => {
+      setTask((prev) => {
+        if (!prev) return prev;
+        return { ...prev, chats: prev.chats?.map(c => c._id === updatedChat._id ? updatedChat : c) };
+      });
+    });
+
+    socket.on('task_chat_deleted', (deletedChatId) => {
+      setTask((prev) => {
+        if (!prev) return prev;
+        return { ...prev, chats: prev.chats?.filter(c => c._id !== deletedChatId) };
+      });
+    });
+
+    return () => socket.disconnect();
+  }, [id]);
+
+  useEffect(() => {
+    if (activeTab === 'attachments') {
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'auto' }), 100);
     }
-    setStatusUpdating(true);
+  }, [activeTab]);
+
+  const handleSendChat = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
     try {
-      await API.put(`/tasks/${id}`, { status });
-      setTask(prev => ({ ...prev, status }));
-      toast.success('Status updated');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update status');
-    }
-    finally { setStatusUpdating(false); }
+      await API.post(`/tasks/${id}/chats`, { message: chatInput });
+      setChatInput('');
+      setShowEmojiPicker(false);
+    } catch { toast.error('Failed to send message'); }
   };
 
-  const handleUpdateAssigneeFlags = async (field, value) => {
+  const handleEditChat = async (chatId) => {
+    if (!editChatInput.trim()) return;
     try {
-      await API.put(`/tasks/${id}`, { [field]: value });
-      setTask(prev => ({ ...prev, [field]: value }));
-      toast.success('Progress updated');
-    } catch (err) {
-      toast.error('Failed to update progress');
-    }
+      await API.put(`/tasks/${id}/chats/${chatId}`, { message: editChatInput });
+      setEditingChatId(null);
+      setEditChatInput('');
+    } catch { toast.error('Failed to edit message'); }
   };
+
+  const handleDeleteChat = async (chatId) => {
+    if (!window.confirm('Delete this message?')) return;
+    try { await API.delete(`/tasks/${id}/chats/${chatId}`); } 
+    catch { toast.error('Failed to delete message'); }
+  };
+
+  // const handleStatusChange = async (status) => {
+  //   if (user.role === 'admin' && task.assignedBy?.role === 'superadmin') {
+  //     toast.error('Admins cannot update status on tasks assigned by a superadmin');
+  //     return;
+  //   }
+  //   setStatusUpdating(true);
+  //   try {
+  //     await API.put(`/tasks/${id}`, { status });
+  //     setTask(prev => ({ ...prev, status }));
+  //     toast.success('Status updated');
+  //   } catch (err) {
+  //     toast.error(err.response?.data?.message || 'Failed to update status');
+  //   }
+  //   finally { setStatusUpdating(false); }
+  // };
+
+  // const handleUpdateAssigneeFlags = async (field, value) => {
+  //   try {
+  //     await API.put(`/tasks/${id}`, { [field]: value });
+  //     setTask(prev => ({ ...prev, [field]: value }));
+  //     toast.success('Progress updated');
+  //   } catch (err) {
+  //     toast.error('Failed to update progress');
+  //   }
+  // };
 
   const handleAcceptTask = async () => {
     setConfirmingTask(true);
@@ -98,25 +167,25 @@ const TaskDetailPage = () => {
     }
   };
 
-  const handleAddComment = async (e) => {
-    e.preventDefault();
-    if (!comment.trim()) return;
-    setSubmittingComment(true);
-    try {
-      const { data } = await API.post(`/tasks/${id}/comments`, { content: comment });
-      setTask(data.data);
-      setComment('');
-      toast.success('Comment added');
-    } catch { toast.error('Failed to add comment'); }
-    finally { setSubmittingComment(false); }
-  };
+  // const handleAddComment = async (e) => {
+  //   e.preventDefault();
+  //   if (!comment.trim()) return;
+  //   setSubmittingComment(true);
+  //   try {
+  //     const { data } = await API.post(`/tasks/${id}/comments`, { content: comment });
+  //     setTask(data.data);
+  //     setComment('');
+  //     toast.success('Comment added');
+  //   } catch { toast.error('Failed to add comment'); }
+  //   finally { setSubmittingComment(false); }
+  // };
 
-  const handleDeleteComment = async (commentId) => {
-    try {
-      await API.delete(`/tasks/${id}/comments/${commentId}`);
-      setTask(prev => ({ ...prev, comments: prev.comments.filter(c => c._id !== commentId) }));
-    } catch { toast.error('Failed to delete comment'); }
-  };
+  // const handleDeleteComment = async (commentId) => {
+  //   try {
+  //     await API.delete(`/tasks/${id}/comments/${commentId}`);
+  //     setTask(prev => ({ ...prev, comments: prev.comments.filter(c => c._id !== commentId) }));
+  //   } catch { toast.error('Failed to delete comment'); }
+  // };
 
 
   const handleSubmitTask = async (e) => {
@@ -189,9 +258,7 @@ const TaskDetailPage = () => {
           </div>
         </div>
         <div className="header-actions">
-          {/* <button className={`btn ${tracking ? 'btn-danger' : 'btn-secondary'}`} onClick={handleTimeTracking}>
-            {tracking ? <><MdStop /> Stop Timer</> : <><MdPlayArrow /> Start Timer</>}
-          </button> */}
+         
           {user.role !== 'user' && (
             <button className="btn btn-secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
               <MdEdit /> {isReadOnlyExceptAssignee ? 'Reassign Task' : 'Edit'}
@@ -254,64 +321,93 @@ const TaskDetailPage = () => {
 
          
 
-          {/* Tabs: Comments | Attachments | Activity | Time */}
+          {/* Tabs: Chats | Attachments | Activity */}
           <div className="card">
             <div className="tabs">
-              {['attachments' , 'activity'].map(tab => (
+              {['attachments','chats' , 'activity'].map(tab => (
                 <div key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  {tab === 'comments' && task.comments?.length > 0 && <span className="badge badge-primary" style={{ marginLeft: 6 }}>{task.comments.length}</span>}
+                  {tab === 'chats' && task.chats?.length > 0 && <span className="badge badge-primary" style={{ marginLeft: 6 }}>{task.chats.length}</span>}
                 </div>
               ))}
             </div>
 
-            {/* Comments */}
-            {/* {activeTab === 'comments' && (
-              <div>
-                <form onSubmit={handleAddComment} style={{ marginBottom: 20 }}>
-                  <div className="flex gap-2">
-                    <div className="avatar avatar-sm" style={{ background: '#4f46e5', flexShrink: 0 }}>{getInitials(user.name)}</div>
-                    <div style={{ flex: 1 }}>
-                      <textarea className="form-control" rows={3} placeholder="Write a comment..." value={comment}
-                        onChange={e => setComment(e.target.value)} style={{ resize: 'none' }} />
-                      <button className="btn btn-primary btn-sm" type="submit" style={{ marginTop: 8 }} disabled={submittingComment || !comment.trim()}>
-                        {submittingComment ? 'Posting...' : 'Post Comment'}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-                {task.comments?.length === 0 ? (
-                  <div className="empty-state" style={{ padding: '24px 0' }}>
-                    <MdComment style={{ fontSize: 40, opacity: 0.3, marginBottom: 8 }} />
-                    <p>No comments yet. Be the first to comment!</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {[...task.comments].reverse().map(c => (
-                      <div key={c._id} className="flex gap-3">
-                        <div className="avatar avatar-sm" style={{ background: '#4f46e5', flexShrink: 0 }}>
-                          {c.user?.avatar ? <img src={`http://localhost:5000${c.user.avatar}`} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : getInitials(c.user?.name)}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div className="flex-between" style={{ marginBottom: 4 }}>
-                            <span style={{ fontWeight: 600, fontSize: 13 }}>{c.user?.name}</span>
-                            <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{format(new Date(c.createdAt), 'MMM d, h:mm a')}</span>
-                              {(user._id === c.user?._id || user.role !== 'user') && (
-                                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: '2px 4px' }} onClick={() => handleDeleteComment(c._id)}>
-                                  <MdDelete style={{ fontSize: 14 }} />
-                                </button>
-                              )}
-                            </div>
+            {/* Chats */}
+            {activeTab === 'chats' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '400px', position: 'relative' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {task.chats?.length === 0 ? (
+                    <div className="empty-state" style={{ margin: 'auto' }}><p>No messages yet. Start the conversation!</p></div>
+                  ) : (
+                    task.chats?.map((chat, i) => {
+                      const isMe = chat.user?._id === user._id;
+                      const isEditing = editingChatId === chat._id;
+
+                      return (
+                        <div key={chat._id || i} style={{ display: 'flex', gap: '10px', alignSelf: isMe ? 'flex-end' : 'flex-start', flexDirection: isMe ? 'row-reverse' : 'row', maxWidth: '80%' }}>
+                          <div className="avatar avatar-sm" style={{ background: isMe ? '#4f46e5' : '#06b6d4', flexShrink: 0 }}>
+                            {getInitials(chat.user?.name)}
                           </div>
-                          <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, background: 'var(--bg)', padding: '8px 12px', borderRadius: 8 }}>{c.content}</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', width: '100%' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>{chat.user?.name} • {format(new Date(chat.createdAt), 'h:mm a')}</span>
+                              {isMe && !isEditing && (
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <button className="btn-ghost" style={{ fontSize: '11px', padding: 0, color: 'var(--primary)', cursor: 'pointer', border: 'none', background: 'transparent' }} onClick={() => { setEditingChatId(chat._id); setEditChatInput(chat.message); }}>Edit</button>
+                                  <button className="btn-ghost" style={{ fontSize: '11px', padding: 0, color: 'var(--danger)', cursor: 'pointer', border: 'none', background: 'transparent' }} onClick={() => handleDeleteChat(chat._id)}>Delete</button>
+                                </div>
+                              )}
+                            </span>
+                            
+                            {isEditing ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: '200px' }}>
+                                <input 
+                                  type="text" 
+                                  className="form-control" 
+                                  value={editChatInput} 
+                                  onChange={e => setEditChatInput(e.target.value)} 
+                                  autoFocus 
+                                />
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button className="btn btn-sm btn-ghost" onClick={() => setEditingChatId(null)}>Cancel</button>
+                                  <button className="btn btn-sm btn-primary" onClick={() => handleEditChat(chat._id)}>Save</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ background: isMe ? '#4f46e5' : 'var(--bg)', color: isMe ? '#fff' : 'var(--text-color)', padding: '8px 12px', borderRadius: '12px', border: isMe ? 'none' : '1px solid var(--border)', wordBreak: 'break-word' }}>
+                                {chat.message}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+                {showEmojiPicker && (
+                  <div style={{ position: 'absolute', bottom: '60px', left: '10px', zIndex: 100 }}>
+                    <EmojiPicker onEmojiClick={(emojiObject) => setChatInput(prev => prev + emojiObject.emoji)} />
                   </div>
                 )}
+                <form onSubmit={handleSendChat} style={{ display: 'flex', gap: '10px', marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '10px', alignItems: 'center' }}>
+                  <button type="button" className="btn-icon" onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                    <MdEmojiEmotions />
+                  </button>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Type a message..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button type="submit" className="btn btn-primary" disabled={!chatInput.trim()}>
+                    <MdSend /> Send
+                  </button>
+                </form>
               </div>
-            )} */}
+            )}
 
             {/* Attachments */}
             {activeTab === 'attachments' && (

@@ -8,6 +8,7 @@ const {
   startTimeTracking, stopTimeTracking, updateTaskOrder,
   getKanbanTasks, getCalendarTasks,
   submitTask, reviewSubmission,
+  addTaskChat, updateTaskChat, deleteTaskChat,
 } = require('../controllers/taskController');
 
 router.use(protect);
@@ -37,5 +38,10 @@ router.delete('/:id/subtasks/:subtaskId', deleteSubtask);
 // Time tracking
 router.post('/:id/time/start', startTimeTracking);
 router.post('/:id/time/stop', stopTimeTracking);
+
+// Chats
+router.post('/:id/chats', addTaskChat);
+router.put('/:id/chats/:chatId', updateTaskChat);
+router.delete('/:id/chats/:chatId', deleteTaskChat);
 
 module.exports = router;

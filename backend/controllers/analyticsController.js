@@ -102,7 +102,7 @@ exports.getAdminDashboard = async (req, res) => {
         { 'submission.isSubmitted': true, 'submission.status': 'pending' },
         { status: 'review' }
       ]
-    }).select('title assignee dueDate submission createdAt').populate('assignee', 'name email avatar').limit(10).sort({ 'submission.submittedAt': -1, updatedAt: -1 });
+    }).select('title assignees dueDate submission createdAt').populate('assignees', 'name email avatar').limit(10).sort({ 'submission.submittedAt': -1, updatedAt: -1 });
 
     res.json({
       success: true,

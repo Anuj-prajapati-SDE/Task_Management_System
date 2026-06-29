@@ -512,22 +512,110 @@ const TaskDetailPage = () => {
                     </div>
                   </div>
                 )}
-                {task.submission.status === 'pending' && (task.assignedBy?._id === user._id || user.role === 'superadmin') && (
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
-                    <div className="form-group">
-                      <label className="form-label">Review Notes (Optional)</label>
-                      <textarea className="form-control" rows={2} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} placeholder="Add feedback..." />
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => handleReviewSubmission('approved')} disabled={reviewingTask}>Approve</button>
-                      <button className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => handleReviewSubmission('rejected')} disabled={reviewingTask}>Reject</button>
-                    </div>
-                  </div>
-                )}
+                {/* Review Action panel */}
+                {task.submission.status === 'pending' && (() => {
+                  const isDelegatedAdmin = task.delegatedBy && (task.delegatedBy._id === user._id || task.delegatedBy === user._id);
+                  const isSuperAdmin = user.role === 'superadmin';
+                  
+                  if (task.delegatedBy) {
+                    if (!task.submission.approvedByAdmin) {
+                      // Stage 1: Waiting for Admin approval
+                      if (isDelegatedAdmin) {
+                        return (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                            <p style={{ color: 'var(--warning)', fontSize: 13, marginBottom: 12 }}>
+                              <strong>Delegated Task:</strong> This task requires your approval before sharing with Superadmin.
+                            </p>
+                            <div className="form-group">
+                              <label className="form-label">Review Notes / Feedback (Optional)</label>
+                              <textarea className="form-control" rows={2} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} placeholder="Add feedback to share with Superadmin..." />
+                            </div>
+                            <div className="flex gap-2">
+                              <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => handleReviewSubmission('approved')} disabled={reviewingTask}>Approve & Submit to Superadmin</button>
+                              <button className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => handleReviewSubmission('rejected')} disabled={reviewingTask}>Reject</button>
+                            </div>
+                          </div>
+                        );
+                      } else if (isSuperAdmin) {
+                        return (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
+                              Waiting for Admin's review and approval.
+                            </p>
+                            <div className="form-group">
+                              <label className="form-label">Review Notes (Optional)</label>
+                              <textarea className="form-control" rows={2} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} placeholder="Bypass Admin & Review now..." />
+                            </div>
+                            <div className="flex gap-2">
+                              <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => handleReviewSubmission('approved')} disabled={reviewingTask}>Approve (Complete Task)</button>
+                              <button className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => handleReviewSubmission('rejected')} disabled={reviewingTask}>Reject</button>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Waiting for Admin's review and approval.</p>
+                          </div>
+                        );
+                      }
+                    } else {
+                      // Stage 2: Approved by Admin, waiting for Superadmin approval
+                      if (isSuperAdmin || String(task.assignedBy?._id || task.assignedBy) === String(user._id)) {
+                        return (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                            <div style={{ marginBottom: 12, padding: 10, background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--success)' }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, display: 'block', color: 'var(--success)' }}>Admin Approved</span>
+                              {task.submission.adminReviewNotes && <p style={{ fontSize: 13, margin: '4px 0 0 0' }}><strong>Admin Notes:</strong> {task.submission.adminReviewNotes}</p>}
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Final Review Notes (Optional)</label>
+                              <textarea className="form-control" rows={2} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} placeholder="Add final feedback..." />
+                            </div>
+                            <div className="flex gap-2">
+                              <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => handleReviewSubmission('approved')} disabled={reviewingTask}>Approve & Complete Task</button>
+                              <button className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => handleReviewSubmission('rejected')} disabled={reviewingTask}>Reject</button>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                            <p style={{ color: 'var(--success)', fontSize: 13 }}>Approved by Admin. Waiting for Superadmin's final approval.</p>
+                          </div>
+                        );
+                      }
+                    }
+                  } else {
+                    // Standard task review
+                    if (String(task.assignedBy?._id || task.assignedBy) === String(user._id) || isSuperAdmin) {
+                      return (
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                          <div className="form-group">
+                            <label className="form-label">Review Notes (Optional)</label>
+                            <textarea className="form-control" rows={2} value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} placeholder="Add feedback..." />
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => handleReviewSubmission('approved')} disabled={reviewingTask}>Approve</button>
+                            <button className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={() => handleReviewSubmission('rejected')} disabled={reviewingTask}>Reject</button>
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+
                 {task.submission.reviewNotes && (
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Review Feedback</div>
                     <p style={{ fontSize: 13 }}>{task.submission.reviewNotes}</p>
+                  </div>
+                )}
+                {task.submission.adminReviewNotes && !task.submission.approvedByAdmin && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Admin Review Feedback</div>
+                    <p style={{ fontSize: 13 }}>{task.submission.adminReviewNotes}</p>
                   </div>
                 )}
               </div>
@@ -567,6 +655,16 @@ const TaskDetailPage = () => {
                   </div>
                 ) : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>—</span>}
               </div>
+
+              {task.delegatedBy && (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Delegated By</div>
+                  <div className="flex gap-2" style={{ alignItems: 'center' }}>
+                    <div className="avatar avatar-sm" style={{ background: '#e11d48' }}>{getInitials(task.delegatedBy.name)}</div>
+                    <span style={{ fontSize: 13 }}>{task.delegatedBy.name}</span>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>

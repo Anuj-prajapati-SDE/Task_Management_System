@@ -8,6 +8,7 @@ const populateTask = (query) =>
   query
     .populate('assignees', 'name email avatar role')
     .populate('assignedBy', 'name avatar role')
+    .populate('delegatedBy', 'name avatar role')
     .populate('team', 'name')
     .populate('comments.user', 'name avatar')
     .populate('chats.user', 'name avatar')
@@ -133,19 +134,81 @@ exports.updateTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
 
+    // Parse stringified fields from form-data payload first
+    const parseField = (field) => {
+      if (typeof field === 'string') {
+        try { return JSON.parse(field); } catch (e) { return field; }
+      }
+      return field;
+    };
+
+    ['assignees', 'tags', 'labels', 'dependencies', 'recurringPattern', 'isRecurring'].forEach(key => {
+      if (req.body[key] !== undefined) {
+        req.body[key] = parseField(req.body[key]);
+      }
+    });
+
+    if (req.body.assignees && !Array.isArray(req.body.assignees)) {
+      req.body.assignees = [req.body.assignees].filter(Boolean);
+    }
+
+    if (req.body.team === '' || req.body.team === 'null') {
+      req.body.team = null;
+    }
+
     const assigner = task.assignedBy ? await User.findById(task.assignedBy) : null;
     if (req.user.role === 'admin' && assigner && assigner.role === 'superadmin') {
-      const keysToUpdate = Object.keys(req.body).filter(
-        (k) => req.body[k] !== undefined && k !== 'activityHistory' && k !== '$unset'
-      );
-      const hasDisallowedChanges = keysToUpdate.some((k) => !['assignees', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
-      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => !['assignees', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason'].includes(k));
+      const keysToUpdate = Object.keys(req.body).filter((k) => {
+        if (req.body[k] === undefined || k === 'activityHistory' || k === '$unset') return false;
+        
+        let taskValue = task[k];
+        let bodyValue = req.body[k];
+
+        if (k === 'team') {
+          const tId = taskValue?._id || taskValue;
+          const bId = bodyValue?._id || bodyValue;
+          return String(tId || '') !== String(bId || '');
+        }
+
+        if (k === 'assignees') {
+          const tArr = Array.isArray(taskValue) ? taskValue.map(x => String(x._id || x)).sort() : [];
+          const bArr = Array.isArray(bodyValue) ? bodyValue.map(x => String(x._id || x)).sort() : [];
+          return JSON.stringify(tArr) !== JSON.stringify(bArr);
+        }
+
+        if (k === 'recurringPattern') {
+          const tFreq = taskValue?.frequency || '';
+          const bFreq = bodyValue?.frequency || '';
+          const tInt = taskValue?.interval || 1;
+          const bInt = bodyValue?.interval || 1;
+          return tFreq !== bFreq || Number(tInt) !== Number(bInt);
+        }
+
+        if (['tags', 'labels', 'dependencies'].includes(k)) {
+          const tArr = Array.isArray(taskValue) ? taskValue.map(String).sort() : [];
+          const bArr = Array.isArray(bodyValue) ? bodyValue.map(String).sort() : [];
+          return JSON.stringify(tArr) !== JSON.stringify(bArr);
+        }
+
+        if (taskValue instanceof Date || (taskValue && !isNaN(Date.parse(taskValue)) && bodyValue && !isNaN(Date.parse(bodyValue)))) {
+          return new Date(taskValue).getTime() !== new Date(bodyValue).getTime();
+        }
+
+        return String(taskValue || '') !== String(bodyValue || '');
+      });
+
+      const hasDisallowedChanges = keysToUpdate.some((k) => !['assignees', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason', 'delegatedBy'].includes(k));
+      const hasDisallowedUnset = req.body.$unset && Object.keys(req.body.$unset).some((k) => !['assignees', 'assigneeReview', 'assigneeCompleted', 'status', 'rejectReason', 'delegatedBy'].includes(k));
 
       if (hasDisallowedChanges || hasDisallowedUnset) {
         return res.status(403).json({
           success: false,
           message: 'Admins can only modify the assignees and assignee progress fields on tasks assigned by a superadmin',
         });
+      }
+
+      if (req.body.assignees) {
+        req.body.delegatedBy = req.user._id;
       }
     }
 
@@ -178,27 +241,10 @@ exports.updateTask = async (req, res) => {
       req.body.completedAt = null;
     }
 
-    if (req.body.team === '' || req.body.team === 'null') {
-      req.body.team = null;
+    if (req.body.team === null) {
       req.body.$unset = req.body.$unset || {};
       req.body.$unset.team = 1;
       delete req.body.team;
-    }
-    const parseField = (field) => {
-      if (typeof field === 'string') {
-        try { return JSON.parse(field); } catch (e) { return field; }
-      }
-      return field;
-    };
-
-    ['assignees', 'tags', 'labels', 'dependencies', 'recurringPattern', 'isRecurring'].forEach(key => {
-      if (req.body[key] !== undefined) {
-        req.body[key] = parseField(req.body[key]);
-      }
-    });
-
-    if (req.body.assignees && !Array.isArray(req.body.assignees)) {
-      req.body.assignees = [req.body.assignees].filter(Boolean);
     }
 
     const updateQuery = { ...req.body, $push: { activityHistory: { $each: changedFields } } };
@@ -468,8 +514,9 @@ exports.reviewSubmission = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
 
-    // Only assigner or superadmin can review
-    if (String(task.assignedBy) !== String(req.user._id) && req.user.role !== 'superadmin') {
+    // Only assigner, superadmin, or delegating admin can review
+    const isDelegatedAdmin = task.delegatedBy && String(task.delegatedBy) === String(req.user._id);
+    if (String(task.assignedBy) !== String(req.user._id) && req.user.role !== 'superadmin' && !isDelegatedAdmin) {
       return res.status(403).json({ success: false, message: 'Not authorized to review this submission' });
     }
 
@@ -486,22 +533,41 @@ exports.reviewSubmission = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Task submission.isSubmitted is false' });
     }
 
-    task.submission.status = status;
-    task.submission.reviewedAt = new Date();
-    task.submission.reviewNotes = reviewNotes;
-    task.markModified('submission');
+    if (isDelegatedAdmin) {
+      // The admin is reviewing the user's submission
+      if (status === 'approved') {
+        // Admin approves and submits to superadmin
+        task.submission.approvedByAdmin = true;
+        task.submission.adminReviewNotes = reviewNotes;
+        task.submission.adminReviewedAt = new Date();
+        task.status = 'review';
+      } else if (status === 'rejected') {
+        task.status = 'in_progress';
+        task.submission.isSubmitted = false;
+        task.submission.status = 'rejected';
+        task.submission.reviewNotes = reviewNotes;
+        task.submission.approvedByAdmin = false;
+      }
+    } else {
+      // The superadmin (or creator) is performing final review
+      task.submission.status = status;
+      task.submission.reviewedAt = new Date();
+      task.submission.reviewNotes = reviewNotes;
 
-    if (status === 'approved') {
-      task.status = 'completed';
-      task.completedAt = new Date();
-    } else if (status === 'rejected') {
-      task.status = 'in_progress';
-      task.submission.isSubmitted = false; // Allow resubmission
+      if (status === 'approved') {
+        task.status = 'completed';
+        task.completedAt = new Date();
+      } else if (status === 'rejected') {
+        task.status = 'in_progress';
+        task.submission.isSubmitted = false;
+        task.submission.approvedByAdmin = false;
+      }
     }
+    task.markModified('submission');
 
     task.activityHistory.push({
       user: req.user._id,
-      action: `submission ${status}`,
+      action: isDelegatedAdmin ? `admin submission ${status}` : `submission ${status}`,
       field: 'submission.status',
       newValue: status,
     });

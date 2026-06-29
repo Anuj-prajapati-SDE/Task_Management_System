@@ -191,7 +191,6 @@ const TaskForm = ({ isEdit = false }) => {
                       <div 
                         key={u._id} 
                         onClick={() => {
-                          if (isReadOnly) return;
                           if (isSelected) {
                             setForm({ ...form, assignees: form.assignees.filter(id => id !== u._id) });
                           } else {
@@ -203,14 +202,13 @@ const TaskForm = ({ isEdit = false }) => {
                           alignItems: 'center', 
                           gap: 12, 
                           padding: '8px 12px', 
-                          cursor: isReadOnly ? 'default' : 'pointer', 
-                          opacity: isReadOnly ? 0.6 : 1, 
+                          cursor: 'pointer', 
                           borderRadius: '6px',
                           background: isSelected ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
                           transition: 'all 0.2s',
                         }}
-                        onMouseEnter={(e) => !isSelected && !isReadOnly && (e.currentTarget.style.background = 'var(--bg-hover)')}
-                        onMouseLeave={(e) => !isSelected && !isReadOnly && (e.currentTarget.style.background = 'transparent')}
+                        onMouseEnter={(e) => !isSelected && (e.currentTarget.style.background = 'var(--bg-hover)')}
+                        onMouseLeave={(e) => !isSelected && (e.currentTarget.style.background = 'transparent')}
                       >
                         <div className="avatar avatar-sm" style={{ background: isSelected ? 'var(--primary)' : '#9ca3af', width: 32, height: 32, fontSize: 13, flexShrink: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {u.name?.[0]?.toUpperCase()}

@@ -40,6 +40,9 @@ const submissionSchema = new mongoose.Schema({
   isSubmitted: { type: Boolean, default: false },
   reviewedAt: { type: Date },
   reviewNotes: { type: String },
+  approvedByAdmin: { type: Boolean, default: false },
+  adminReviewNotes: { type: String },
+  adminReviewedAt: { type: Date },
 });
 
 const activitySchema = new mongoose.Schema({
@@ -63,6 +66,7 @@ const taskSchema = new mongoose.Schema(
     priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
     assignees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    delegatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
     dueDate: { type: Date },
     startDate: { type: Date },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../../utils/api';
+import SEO from '../../components/common/SEO';
 import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -48,7 +49,7 @@ const TaskDetailPage = () => {
   useEffect(() => { fetchTask(); }, [id]);
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000');
+    const socket = io(import.meta.env.VITE_SOCKET_URL);
     socket.emit('join_task', id);
 
     socket.on('new_task_chat', (newChat) => {
@@ -243,6 +244,11 @@ const TaskDetailPage = () => {
 
   return (
     <div>
+      <SEO 
+        title={task ? `${task.title} - Task Details` : 'Task Details'} 
+        description={task ? `Task details and workflow for "${task.title}": ${task.description || 'No description provided.'}` : 'View details of this task on TaskFlow.'} 
+        robots="noindex, nofollow" 
+      />
       {/* Header */}
       <div className="page-header">
         <div className="flex gap-3" style={{ alignItems: 'center' }}>
@@ -428,7 +434,7 @@ const TaskDetailPage = () => {
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(a.size / 1024).toFixed(1)} KB</div>
                           </div>
                         </div>
-                        <a href={`http://localhost:5000${a.path}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">Download</a>
+                        <a href={`${import.meta.env.VITE_SOCKET_URL}${a.path}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">Download</a>
                       </div>
                     ))}
                   </div>
@@ -507,7 +513,7 @@ const TaskDetailPage = () => {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Attachments</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {task.submission.attachments.map((file, i) => (
-                        <a key={i} href={`http://localhost:5000${file.path}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4 }}><MdAttachFile /> {file.originalName}</a>
+                        <a key={i} href={`${import.meta.env.VITE_SOCKET_URL}${file.path}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4 }}><MdAttachFile /> {file.originalName}</a>
                       ))}
                     </div>
                   </div>

@@ -9,7 +9,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', { transports: ['websocket'] });
+      socketRef.current = io(import.meta.env.VITE_SOCKET_URL, { transports: ['websocket'] });
       socketRef.current.emit('join_room', user._id);
 
 

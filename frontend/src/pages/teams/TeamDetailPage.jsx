@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
@@ -59,7 +60,7 @@ const TeamDetailPage = () => {
   useEffect(() => { fetchData(); }, [id]);
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000');
+    const socket = io(import.meta.env.VITE_SOCKET_URL);
     socket.emit('join_team', id);
 
     socket.on('new_team_chat', (newChat) => {
@@ -167,6 +168,11 @@ const TeamDetailPage = () => {
 
   return (
     <div>
+      <SEO 
+        title={team ? `${team.name} - Team Details` : 'Team Details'} 
+        description={team ? `Manage members, view chat feeds, and track project status metrics for team "${team.name}": ${team.description || 'No description'}` : 'View collaborative team details.'} 
+        robots="noindex, nofollow" 
+      />
       <div className="page-header">
         <div className="flex gap-3" style={{ alignItems: 'center' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/teams')}><MdArrowBack /> Back</button>
@@ -215,7 +221,7 @@ const TeamDetailPage = () => {
                   <tr key={m.user?._id}>
                     <td><div className="flex gap-2" style={{ alignItems: 'center' }}>
                       <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>
-                        {m.user?.avatar ? <img src={`http://localhost:5000${m.user.avatar}`} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%' }} /> : getInitials(m.user?.name)}
+                        {m.user?.avatar ? <img src={`${import.meta.env.VITE_SOCKET_URL}${m.user.avatar}`} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%' }} /> : getInitials(m.user?.name)}
                       </div>
                       <div><div style={{ fontWeight: 500, fontSize: 13 }}>{m.user?.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.user?.email}</div></div>

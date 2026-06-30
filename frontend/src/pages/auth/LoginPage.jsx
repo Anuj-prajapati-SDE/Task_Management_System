@@ -10,6 +10,7 @@ import {
 } from 'react-icons/md';
 import API from '../../utils/api';
 import './Auth.css';
+import SEO from '../../components/common/SEO';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -57,8 +58,27 @@ const LoginPage = () => {
     }
   };
 
+  const loginSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "TaskFlow",
+    "operatingSystem": "All",
+    "applicationCategory": "BusinessApplication",
+    "description": "Streamline task delegation, track real-time progress, and boost productivity with TaskFlow role-based task management.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  };
+
   return (
     <div className="login-page">
+      <SEO 
+        title="Login" 
+        description="Sign in to TaskFlow to manage projects, delegate roles, track progress, and coordinate with your team." 
+        schema={loginSchema} 
+      />
       {/* Left Section */}
       <div className="left-panel">
         <div className="shape-1" />

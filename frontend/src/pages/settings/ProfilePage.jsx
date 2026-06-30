@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import SEO from '../../components/common/SEO';
 import API from '../../utils/api';
 import toast from 'react-hot-toast';
 import { MdCameraAlt, MdSave } from 'react-icons/md';
@@ -12,7 +13,7 @@ export const ProfilePage = () => {
     position: user?.position || '', phone: user?.phone || '',
   });
   const [avatar, setAvatar] = useState(null);
-  const [preview, setPreview] = useState(user?.avatar ? `http://localhost:5000${user.avatar}?t=${new Date(user?.updatedAt || Date.now()).getTime()}` : null);
+  const [preview, setPreview] = useState(user?.avatar ? `${import.meta.env.VITE_SOCKET_URL}${user.avatar}?t=${new Date(user?.updatedAt || Date.now()).getTime()}` : null);
   const [loading, setLoading] = useState(false);
 
   const handleAvatarChange = (e) => {
@@ -36,6 +37,7 @@ export const ProfilePage = () => {
 
   return (
     <div>
+      <SEO title="Profile Settings" description="Update your user profile settings and preferences on TaskFlow." robots="noindex, nofollow" />
       <div className="page-header"><h1>Profile Settings</h1><p>Update your personal information.</p></div>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <div className="card">

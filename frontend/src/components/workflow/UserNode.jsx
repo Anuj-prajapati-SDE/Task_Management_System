@@ -20,7 +20,7 @@ const UserNode = ({ data }) => {
       <Handle type="target" position={Position.Left} style={{ background: 'var(--text-muted)' }} />
       
       {avatar ? (
-        <img src={`http://localhost:5000${avatar}`} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+        <img src={`${import.meta.env.VITE_SOCKET_URL}${avatar}`} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
       ) : (
         <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
           {name?.charAt(0)?.toUpperCase() || 'U'}

@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /forgot-password
+Allow: /reset-password
+Allow: /verify-email
+
+# Disallow private user/dashboard areas from indexing
+Disallow: /dashboard/
+Disallow: /tasks/
+Disallow: /teams/
+Disallow: /settings/
+Disallow: /users/
+Disallow: /reports/
+Disallow: /system-settings/
+Disallow: /workflow/
+Disallow: /calendar
+
+Sitemap: https://taskflow.example.com/sitemap.xml

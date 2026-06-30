@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { MdAdd, MdSearch, MdFilterList, MdEdit, MdDelete, MdVisibility, MdViewKanban } from 'react-icons/md';
@@ -48,6 +49,7 @@ const TaskListPage = () => {
 
   return (
     <div>
+      <SEO title="My Tasks" description="View and manage all your tasks, filter assignments, search projects, and delegate responsibilities on TaskFlow." robots="noindex, nofollow" />
       <div className="page-header">
         <div>
           <h1>Tasks</h1>

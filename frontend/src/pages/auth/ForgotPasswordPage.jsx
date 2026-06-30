@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import API from '../../utils/api';
 import { MdTask, MdCheckCircle, MdError } from 'react-icons/md';
 import toast from 'react-hot-toast';
+import SEO from '../../components/common/SEO';
 
 // ===== Forgot Password =====
 export const ForgotPasswordPage = () => {
@@ -19,6 +20,7 @@ export const ForgotPasswordPage = () => {
 
   return (
     <div className="auth-page">
+      <SEO title="Forgot Password" description="Request a password reset link for your TaskFlow account." />
       <div className="auth-card">
         <div className="auth-logo"><div className="logo-icon"><MdTask /></div><span className="logo-text">TaskFlow</span></div>
         {sent ? (
@@ -66,6 +68,7 @@ export const ResetPasswordPage = () => {
 
   return (
     <div className="auth-page">
+      <SEO title="Reset Password" description="Choose a new password to secure and regain access to your TaskFlow account." />
       <div className="auth-card">
         <div className="auth-logo"><div className="logo-icon"><MdTask /></div><span className="logo-text">TaskFlow</span></div>
         <h1 className="auth-title">Reset Password</h1>
@@ -98,6 +101,7 @@ export const VerifyEmailPage = () => {
 
   return (
     <div className="auth-page">
+      <SEO title="Verify Email" description="Verify your email address to activate your TaskFlow account." />
       <div className="auth-card text-center">
         <div className="auth-logo" style={{ justifyContent: 'center' }}><div className="logo-icon"><MdTask /></div><span className="logo-text">TaskFlow</span></div>
         {status === 'loading' && <><div className="spinner" style={{ margin: '20px auto' }} /><p>Verifying your email...</p></>}
@@ -111,6 +115,7 @@ export const VerifyEmailPage = () => {
 // ===== Unauthorized =====
 export const UnauthorizedPage = () => (
   <div className="auth-page">
+    <SEO title="Access Denied" description="You do not have authorization to view this resource." robots="noindex, nofollow" />
     <div className="auth-card text-center">
       <div style={{ fontSize: 64, marginBottom: 16 }}>🔒</div>
       <h1 style={{ marginBottom: 8 }}>Access Denied</h1>

@@ -108,16 +108,27 @@ exports.createTask = async (req, res) => {
       for (const assigneeId of parsedAssignees) {
         if (assigneeId !== req.user._id.toString()) {
           const assigneeUser = await User.findById(assigneeId);
-          if (assigneeUser?.notificationPreferences?.email) {
-            await sendEmail({ to: assigneeUser.email, subject: 'New Task Assigned', html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) }).catch(() => { });
+          if (assigneeUser) {
+            const shouldSendEmail = 
+              (req.user.role === 'superadmin' && (assigneeUser.role === 'admin' || assigneeUser.role === 'user')) ||
+              (req.user.role === 'admin' && assigneeUser.role === 'user');
+
+            if (shouldSendEmail) {
+              await sendEmail({ 
+                to: assigneeUser.email, 
+                subject: 'New Task Assigned', 
+                html: emailTemplates.taskAssigned(assigneeUser.name, title, `${process.env.CLIENT_URL}/tasks/${task._id}`) 
+              }).catch((err) => { console.error('Error sending task creation assignment email:', err); });
+            }
+
+            await createNotification(req.app.get('io'), {
+              user: assigneeId,
+              title: 'New Task Assigned',
+              message: `You have been assigned to task: ${title}`,
+              type: 'task_assigned',
+              link: `/tasks/${task._id}`
+            });
           }
-          await createNotification(req.app.get('io'), {
-            user: assigneeId,
-            title: 'New Task Assigned',
-            message: `You have been assigned to task: ${title}`,
-            type: 'task_assigned',
-            link: `/tasks/${task._id}`
-          });
         }
       }
     }
@@ -271,13 +282,28 @@ exports.updateTask = async (req, res) => {
     if (req.body.assignees && req.body.assignees.length > 0) {
       for (const assigneeId of req.body.assignees) {
         if (!task.assignees.some(a => a.toString() === assigneeId) && assigneeId !== req.user._id.toString()) {
-          await createNotification(req.app.get('io'), {
-            user: assigneeId,
-            title: 'New Task Assigned',
-            message: `You have been assigned to task: ${updated.title}`,
-            type: 'task_assigned',
-            link: `/tasks/${updated._id}`
-          });
+          const assigneeUser = await User.findById(assigneeId);
+          if (assigneeUser) {
+            const shouldSendEmail = 
+              (req.user.role === 'superadmin' && (assigneeUser.role === 'admin' || assigneeUser.role === 'user')) ||
+              (req.user.role === 'admin' && assigneeUser.role === 'user');
+
+            if (shouldSendEmail) {
+              await sendEmail({ 
+                to: assigneeUser.email, 
+                subject: 'New Task Assigned', 
+                html: emailTemplates.taskAssigned(assigneeUser.name, updated.title, `${process.env.CLIENT_URL}/tasks/${updated._id}`) 
+              }).catch((err) => { console.error('Error sending task update assignment email:', err); });
+            }
+
+            await createNotification(req.app.get('io'), {
+              user: assigneeId,
+              title: 'New Task Assigned',
+              message: `You have been assigned to task: ${updated.title}`,
+              type: 'task_assigned',
+              link: `/tasks/${updated._id}`
+            });
+          }
         }
       }
     }

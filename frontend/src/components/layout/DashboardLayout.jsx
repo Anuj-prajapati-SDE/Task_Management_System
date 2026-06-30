@@ -33,7 +33,7 @@ const DashboardLayout = () => {
       };
       fetchNotifications();
 
-      const socket = io('http://localhost:5000');
+      const socket = io(import.meta.env.VITE_SOCKET_URL);
       socket.emit('join_room', user._id);
 
       socket.on('new_notification', (notification) => {
@@ -140,7 +140,7 @@ const DashboardLayout = () => {
         <div className="sidebar-footer">
           <div className="sidebar-user" onClick={() => navigate('/settings/profile')}>
             {user?.avatar
-              ? <img src={`http://localhost:5000${user.avatar}?t=${new Date(user.updatedAt || Date.now()).getTime()}`} alt={user.name} className="avatar" style={{ objectFit: 'cover' }} />
+              ? <img src={`${import.meta.env.VITE_SOCKET_URL}${user.avatar}?t=${new Date(user.updatedAt || Date.now()).getTime()}`} alt={user.name} className="avatar" style={{ objectFit: 'cover' }} />
               : <div className="avatar" style={{ background: '#4f46e5' }}>{getInitials(user?.name)}</div>
             }
             <div className="user-info">
@@ -227,7 +227,7 @@ const DashboardLayout = () => {
             {/* Standardized Avatar Trigger */}
             <div className="topbar-user-trigger" onClick={() => navigate('/settings/profile')}>
               {user?.avatar
-                ? <img src={`http://localhost:5000${user.avatar}?t=${new Date(user.updatedAt || Date.now()).getTime()}`} alt={user.name} className="topbar-avatar" style={{ objectFit: 'cover' }} />
+                ? <img src={`${import.meta.env.VITE_SOCKET_URL}${user.avatar}?t=${new Date(user.updatedAt || Date.now()).getTime()}`} alt={user.name} className="topbar-avatar" style={{ objectFit: 'cover' }} />
                 : <div className="avatar mini-initials">{getInitials(user?.name)}</div>
               }
             </div>

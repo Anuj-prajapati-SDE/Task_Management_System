@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -42,6 +43,7 @@ const UserDashboard = () => {
 
   return (
     <div>
+      <SEO title="User Dashboard" description="Track your active tasks, view task progress analytics, and collaborate with your team on TaskFlow." robots="noindex, nofollow" />
       <div className="page-header">
         <div>
           <h1>Good morning, {user?.name?.split(' ')[0]} </h1>

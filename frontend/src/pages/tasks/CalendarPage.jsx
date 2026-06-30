@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import API from '../../utils/api';
@@ -60,6 +61,7 @@ const CalendarPage = () => {
 
   return (
     <div>
+      <SEO title="Task Calendar" description="Visualize deadlines, start dates, and schedules on an interactive task calendar." robots="noindex, nofollow" />
       <div className="page-header">
         <div><h1>Calendar</h1><p>View your tasks by due date.</p></div>
         {user.role !== 'user' && (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -64,6 +65,7 @@ export const TeamsPage = () => {
 
   return (
     <div>
+      <SEO title="Teams" description="Manage collaborative teams, configure member roles, and view team-based projects on TaskFlow." robots="noindex, nofollow" />
       <div className="page-header">
         <div><h1>Teams</h1><p>Collaborate with your team members.</p></div>
         {user.role !== 'user' && (<button className="btn btn-primary" onClick={() => setShowCreate(true)}><MdAdd /> New Team</button>)}

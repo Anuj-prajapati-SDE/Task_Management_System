@@ -2,7 +2,6 @@ import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { MdCheckCircle, MdPending, MdRunningWithErrors } from 'react-icons/md';
 import { format } from 'date-fns';
-
 const TaskNode = ({ data }) => {
   const { title, status, priority, assignees, dueDate } = data;
   const firstAssignee = assignees && assignees.length > 0 ? assignees[0] : null;
@@ -51,7 +50,7 @@ const TaskNode = ({ data }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {firstAssignee?.avatar ? (
-            <img src={`http://localhost:5000${firstAssignee.avatar}`} alt="avatar" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+            <img src={`${import.meta.env.VITE_SOCKET_URL}${firstAssignee.avatar}`} alt="avatar" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
               {firstAssignee?.name?.charAt(0)?.toUpperCase() || 'U'}

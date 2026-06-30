@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SEO from '../../components/common/SEO';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -137,6 +138,7 @@ const SuperAdminDashboard = () => {
 
   return (
     <div>
+      <SEO title="Super Admin Dashboard" description="Full control over platform metrics, user access roles, system configurations, and system-wide task activity." robots="noindex, nofollow" />
       {/* ===== HEADER ===== */}
       <div className="page-header">
         <div>
@@ -418,7 +420,7 @@ const SuperAdminDashboard = () => {
                         <div className="flex gap-2" style={{ alignItems: 'center' }}>
                           <div className="avatar avatar-sm" style={{ background: '#4f46e5' }}>
                             {u.avatar
-                              ? <img src={`http://localhost:5000${u.avatar}`} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                              ? <img src={`${import.meta.env.VITE_SOCKET_URL}${u.avatar}`} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                               : u.name?.[0]}
                           </div>
                           <div>

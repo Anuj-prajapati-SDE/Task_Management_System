@@ -11,6 +11,7 @@ import {
   MdVisibilityOff 
 } from 'react-icons/md';
 import './Auth.css'; // Renamed from LoginPage.css to share across auth pages
+import SEO from '../../components/common/SEO';
 
 const RegisterPage = () => {
   const { register } = useAuth();
@@ -36,6 +37,10 @@ const RegisterPage = () => {
 
   return (
     <div className="login-page"> {/* Reusing the layout class */}
+      <SEO 
+        title="Create an Account" 
+        description="Register for TaskFlow's advanced task management platform to collaborate, manage projects, and streamline workflows." 
+      />
       
       {/* Left Section - Professional Branding */}
       <div className="left-panel">

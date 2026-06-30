@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import SEO from "../../components/common/SEO";
 import API from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import { format } from "date-fns";
@@ -102,6 +103,7 @@ export const UserListPage = () => {
 
   return (
     <div>
+      <SEO title="Users Management" description="View and manage system users, configure roles, department affiliations, and account activation statuses." robots="noindex, nofollow" />
       <div className="page-header">
         <div>
           <h1>Users</h1>
@@ -245,7 +247,7 @@ export const UserListPage = () => {
                         >
                           {u.avatar ? (
                             <img
-                              src={`http://localhost:5000${u.avatar}`}
+                              src={`${import.meta.env.VITE_SOCKET_URL}${u.avatar}`}
                               alt=""
                               className="avatar avatar-sm"
                             />
@@ -489,7 +491,7 @@ export const UserDetailPage = () => {
             >
               {user.avatar ? (
                 <img
-                  src={`http://localhost:5000${user.avatar}`}
+                  src={`${import.meta.env.VITE_SOCKET_URL}${user.avatar}`}
                   alt=""
                   style={{
                     width: "100%",

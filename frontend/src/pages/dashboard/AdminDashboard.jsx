@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import SEO from "../../components/common/SEO";
 import {
   BarChart,
   Bar,
@@ -59,6 +60,7 @@ export const AdminDashboard = () => {
 
   return (
     <div>
+      <SEO title="Admin Dashboard" description="Oversee system tasks, manage team member assignments, track progress statistics, and configure options." robots="noindex, nofollow" />
       <div className="page-header">
         <div>
           <h1>Admin Dashboard</h1>

@@ -6,7 +6,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const onFinished = require('on-finished');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
@@ -28,14 +27,6 @@ app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', creden
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Rate limiting
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-app.use('/api/', limiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
 
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -84,6 +75,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));
+app.use('/api/daily-updates', require('./routes/dailyUpdateRoutes'));
 
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/audit', require('./routes/auditRoutes'));

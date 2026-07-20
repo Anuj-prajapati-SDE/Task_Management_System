@@ -22,6 +22,7 @@ import UserDashboard from './pages/dashboard/UserDashboard';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
 import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
 import TaskWorkflowPage from './pages/dashboard/TaskWorkflowPage';
+import DailyUpdatePage from './pages/dashboard/DailyUpdatePage';
 // Task Pages
 import TaskListPage from './pages/tasks/TaskListPage';
 import TaskDetailPage from './pages/tasks/TaskDetailPage';
@@ -105,6 +106,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardRedirect />} />
+        <Route path="daily-update" element={<DailyUpdatePage />} />
         <Route path="workflow" element={<TaskWorkflowPage />} />
 
         {/* Tasks */}

@@ -5,7 +5,8 @@ import {
   MdDashboard, MdAssignment, MdCalendarMonth,
   MdPeople, MdGroup, MdBarChart,
   MdSecurity, MdMenu,
-  MdLogout, MdClose, MdTask, MdNotifications, MdAccountTree
+  MdLogout, MdClose, MdTask, MdNotifications, MdAccountTree,
+  MdRateReview
 } from 'react-icons/md';
 import io from 'socket.io-client';
 import api from '../../utils/api';
@@ -86,6 +87,7 @@ const DashboardLayout = () => {
  
   const navItems = [
     { icon: <MdDashboard />, label: 'Dashboard', to: '/dashboard', roles: ['user', 'admin', 'superadmin'] },
+    { icon: <MdRateReview />, label: 'Daily Update', to: '/daily-update', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdAssignment />, label: 'My Tasks', to: '/tasks', roles: ['user', 'admin', 'superadmin'] },
     { icon: <MdAccountTree />, label: 'Task Workflow', to: '/workflow', roles: ['admin', 'superadmin'] },
     { icon: <MdCalendarMonth />, label: 'Calendar', to: '/calendar', roles: ['user', 'admin', 'superadmin'] },

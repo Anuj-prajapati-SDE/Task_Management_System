@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SEO from '../../components/common/SEO';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import API from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
-import { MdAdd, MdCheckCircle, MdPending, MdRunningWithErrors, MdWarning, MdArrowForward } from 'react-icons/md';
+import { MdCheckCircle, MdPending, MdRunningWithErrors, MdWarning, MdArrowForward } from 'react-icons/md';
 import { format, isToday, isTomorrow } from 'date-fns';
 
 const UserDashboard = () => {
@@ -49,7 +49,6 @@ const UserDashboard = () => {
           <h1>Good morning, {user?.name?.split(' ')[0]} </h1>
           <p>Here's what's happening with your tasks today.</p>
         </div>
-        
       </div>
 
       {/* Stats */}
